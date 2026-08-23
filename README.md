@@ -30,13 +30,9 @@
   - `1)代码逻辑：`
   - `2)返回值类型 类型原因 (哪个接口调用)`
   - `3)参数类型 类型原因 (为什么是这个参数，这个参数符合代码逻辑的哪个要求)`
-- 架构优先满足 6 人成员分工清晰
 
 ## 当前目录
 
-- `docs/api/`：前后端 HTTP / WebSocket 联调格式
-- `docs/flowcharts/`：流程图目录说明
-- `docs/test/`：测试计划
 - `include/framework/`：Crow 启动装配、路由注册、统一响应格式
 - `include/models/`：用户、消息、大厅会话、私聊窗口会话模型
 - `include/websocket/`：WebSocket 连接管理、消息分发、聊天入口控制
@@ -45,13 +41,3 @@
 - `include/storage/`：内存用户、会话、大厅消息、私聊窗口存储
 - `include/common/`：公共类型和常量
 - `src/`：程序启动入口
-
-## 说明文档
-
-- [HTTP API 文档](/F:/网络聊天室架构/docs/api/http_api.md)
-
-- [WebSocket API 文档](/F:/网络聊天室架构/docs/api/websocket_api.md)
-
-- [流程图目录说明](/F:/网络聊天室架构/docs/flowcharts/README.md)
-
-  
