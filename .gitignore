@@ -37,4 +37,5 @@ Thumbs.db
 *.o
 *.so
 *.a
-*.outout/
+*.out
+out/
