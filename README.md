@@ -41,3 +41,9 @@
 - `include/storage/`：内存用户、会话、大厅消息、私聊窗口存储
 - `include/common/`：公共类型和常量
 - `src/`：程序启动入口
+# chatroom
+
+网络聊天室
+
+- arch:项目架构
+- doc:项目相关文档
