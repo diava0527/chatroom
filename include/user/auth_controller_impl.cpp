@@ -14,7 +14,7 @@ namespace chatroom::user {
 
 		if (!json_body || !json_body.has("nickname") || !json_body.has("password")) {  //校验是否合法
 			return crow::response(400, crow::json::wvalue(
-				{ {"code",1001},
+				{ {"code",1004},
 				{"message","invalid request"},
 				{"data",crow::json::wvalue()} }                                        //构造空对象返回
 			));
@@ -25,7 +25,7 @@ namespace chatroom::user {
 		if (nick_val.t() != crow::json::type::String || pwd_val.t() != crow::json::type::String){
 			                                                                           // 参数类型错误
 			return crow::response(400, crow::json::wvalue(
-				{ {"code",1001},
+				{ {"code",1004},
 				{"message","invalid request"},
 				{"data",crow::json::wvalue()} }
 			));
@@ -36,7 +36,7 @@ namespace chatroom::user {
 
 		if (nickname.empty() || password.empty()) {                                   //参数为空
 			return crow::response(400, crow::json::wvalue(
-				{ {"code",1001},
+				{ {"code",1004},
 				{"message","invalid request"},
 				{"data",crow::json::wvalue()} }
 			));
