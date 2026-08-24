@@ -22,4 +22,9 @@ add_executable(browser_chatroom_architecture
     "include/storage/user_memory_store_impl.cpp"
     "include/user/user_service_impl.h"
     "include/user/user_service_impl.cpp"
- "include/user/auth_service_impl.cpp" "include/user/auth_service_impl.h")
+ "include/user/auth_service_impl.cpp" "include/user/auth_service_impl.h"
+     "include/chat/online_user_service.cpp"
+     "include/chat/lobby_service.cpp"
+     "include/chat/private_chat_service.cpp"
+     "include/chat/chat_controller.cpp"
+)

@@ -1,47 +1,90 @@
-// 私聊服务实现：对应 include/chat/private_chat_service.h 接口。
-// 当前仅搭好骨架，方法体为占位实现，具体业务逻辑待补充。
-#include "chat/private_chat_service.h"
+// 私聊服务实现：对应 include/chat/private_chat_service_impl.h 头文件
+#include "chat/private_chat_service_impl.h"
+
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+#include <utility>
 
 namespace chatroom::chat {
 
-// 私聊服务的具体实现类。
-class PrivateChatServiceImpl : public PrivateChatService {
-public:
-    // 创建私聊窗口：建立双方用户之间的当前私聊会话。
-    chatroom::models::PrivateChatSession CreatePrivateSession(
-        const std::string& senderNickname,
-        const std::string& receiverNickname) override {
-        // TODO: 实现创建私聊窗口逻辑
-        (void)senderNickname;
-        (void)receiverNickname;
-        return {};
+// 生成全局唯一消息 ID：形如 "msg_1"、"msg_2" 等
+std::string PrivateChatServiceImpl::GenerateMessageId() {
+    return "msg_" + std::to_string(id_counter_.fetch_add(1) + 1);
+}
+
+// 生成时间戳：格式为 "YYYY-MM-DD HH:MM:SS"，每个字段定宽补零，字符串比较等价于时间先后
+std::string PrivateChatServiceImpl::GenerateTimestamp() const {
+    using namespace std::chrono;
+    std::time_t t = system_clock::to_time_t(system_clock::now());
+    std::tm tm_buf{};
+#if defined(_WIN32)
+    localtime_s(&tm_buf, &t);
+#else
+    localtime_r(&t, &tm_buf);
+#endif
+    std::ostringstream oss;
+    oss << std::put_time(&tm_buf, "%Y-%m-%d %H:%M:%S");
+    return oss.str();
+}
+
+// 构造函数：注入私聊存储依赖
+PrivateChatServiceImpl::PrivateChatServiceImpl(std::shared_ptr<storage::PrivateChatMemoryStore> store)
+    : store_(std::move(store)) {
+}
+
+// 创建私聊窗口：建立双方用户之间的当前私聊会话
+chatroom::models::PrivateChatSession PrivateChatServiceImpl::CreatePrivateSession(
+    const std::string& senderNickname,
+    const std::string& receiverNickname) {
+    return store_->CreateSession(senderNickname, receiverNickname);
+}
+
+// 发送私聊消息：向指定窗口写入消息，返回完整消息体
+chatroom::models::Message PrivateChatServiceImpl::SendPrivateMessage(
+    const std::string& privateSessionId,
+    const std::string& senderNickname,
+    const std::string& content) {
+    // 首先查询窗口，确认存在
+    auto opt = store_->FindSession(privateSessionId);
+    if (!opt.has_value()) {
+        return {};  // 窗口不存在，返回空消息
+    }
+    const auto& session = opt.value();
+
+    // 确定接收者：发送者是 sender 则接收者是 receiver，反之亦然
+    std::string receiver;
+    if (session.senderNickname == senderNickname) {
+        receiver = session.receiverNickname;
+    } else if (session.receiverNickname == senderNickname) {
+        receiver = session.senderNickname;
+    } else {
+        return {};  // 发送者不属于这个窗口，请求非法，返回空消息
     }
 
-    // 发送私聊消息：向指定窗口写入消息，返回完整消息体。
-    chatroom::models::Message SendPrivateMessage(
-        const std::string& privateSessionId,
-        const std::string& senderNickname,
-        const std::string& content) override {
-        // TODO: 实现发送私聊消息逻辑
-        (void)privateSessionId;
-        (void)senderNickname;
-        (void)content;
-        return {};
-    }
+    // 构造完整消息
+    chatroom::models::Message msg;
+    msg.messageId = GenerateMessageId();
+    msg.senderNickname = senderNickname;
+    msg.receiverNickname = receiver;
+    msg.content = content;
+    msg.timestamp = GenerateTimestamp();
 
-    // 拉取私聊历史：返回指定窗口的全部消息。
-    std::vector<chatroom::models::Message> PullPrivateHistory(
-        const std::string& privateSessionId) const override {
-        // TODO: 实现私聊历史拉取逻辑
-        (void)privateSessionId;
-        return {};
-    }
+    // 写入窗口（私聊追加消息）
+    store_->AppendMessage(privateSessionId, msg);
+    return msg;
+}
 
-    // 清理用户会话：删除与该用户相关的全部私聊窗口。
-    void ClearSessionsByUser(const std::string& nickname) override {
-        // TODO: 实现清理用户私聊窗口逻辑
-        (void)nickname;
-    }
-};
+// 拉取私聊历史：返回指定窗口的全部消息
+std::vector<chatroom::models::Message> PrivateChatServiceImpl::PullPrivateHistory(
+    const std::string& privateSessionId) const {
+    return store_->ListMessages(privateSessionId);
+}
+
+// 清理用户会话：删除与该用户相关的全部私聊窗口
+void PrivateChatServiceImpl::ClearSessionsByUser(const std::string& nickname) {
+    store_->RemoveSessionsByUser(nickname);
+}
 
 }  // namespace chatroom::chat
