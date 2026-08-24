@@ -9,6 +9,9 @@
 #include "chat/private_chat_service.h"
 #include "common/constants.h"
 #include "common/types.h"
+#include "framework/crow_router_registry.h"
+#include "framework/crow_server_app.h"
+#include "framework/json_response_builder.h"
 #include "framework/response_builder.h"
 #include "framework/router_registry.h"
 #include "framework/server_app.h"
@@ -28,11 +31,25 @@
 #include "websocket/ws_message_dispatcher.h"
 
 int main() {
-    crow::SimpleApp app;
+    chatroom::framework::CrowRouterRegistry routerRegistry;
+    chatroom::framework::JsonResponseBuilder responseBuilder;
+    chatroom::framework::CrowServerApp serverApp(routerRegistry);
 
-    // 当前阶段只保留启动入口骨架，不实现具体业务逻辑。
-    // 这里统一纳入项目架构所需头文件，作为后续模块装配的总入口。
-    (void)app;
+    routerRegistry.AddRegistrar([&responseBuilder](crow::SimpleApp& app) {
+        CROW_ROUTE(app, "/")
+        ([] {
+            return "chatroom backend is running";
+        });
 
+        CROW_ROUTE(app, "/api/v1/health")
+        ([&responseBuilder] {
+            return responseBuilder.BuildHttpJson(
+                chatroom::common::kSuccessCode,
+                "server started",
+                std::nullopt);
+        });
+    });
+
+    serverApp.Run();
     return 0;
 }
