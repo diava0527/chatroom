@@ -37,6 +37,15 @@
 }
 ```
 
+参数有误时：
+```json
+{
+  "code": 1004,
+  "message": "invalid request",
+  "data": null
+}
+```
+
 ## 2. 用户登录
 
 - 方法：`POST`
@@ -95,6 +104,15 @@
 {
   "code": 0,
   "message": "logout success",
+  "data": null
+}
+```
+
+失败响应：
+```json
+{
+  "code": 1003,
+  "message": "sessionId invalid",
   "data": null
 }
 ```
