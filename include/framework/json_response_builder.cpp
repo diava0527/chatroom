@@ -11,7 +11,11 @@ crow::response JsonResponseBuilder::BuildHttpJson(
     responseBody["message"] = message;
 
     if (data.has_value()) {
-        responseBody["data"] = *data;
+        if (auto parsed = crow::json::load(*data); parsed) {
+            responseBody["data"] = std::move(parsed);
+        } else {
+            responseBody["data"] = *data;
+        }
     } else {
         responseBody["data"] = nullptr;
     }

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>聊天室</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <div class="chat-container">
+
+        <!-- 顶部标题 -->
+        <div class="chat-header">
+            长庚的聊天室
+        </div>
+
+        <!-- 聊天主体 -->
+        <div class="chat-main">
+
+            <!-- 左边用户列表 -->
+            <div class="user-list">
+
+                <h3>聊天</h3>
+
+                <!-- 公共大厅 -->
+                <div class="user lobby" data-type="lobby">
+                    💬 公共大厅
+                </div>
+
+                <h3>在线用户</h3>
+
+                <!-- 在线用户 -->
+                <div id="userList">
+                    <!-- 以后由后端动态生成 -->
+                </div>
+
+            </div>
+
+            <!-- 右边聊天区域 -->
+            <div class="chat-area">
+
+                <div class="chat-title" id="chatTitle">
+                    请选择一个用户
+                </div>
+
+                <div id="chatBox">
+                </div>
+
+                <div class="input-area">
+
+                    <textarea
+                        id="messageInput"
+                        placeholder="请输入消息"
+                        rows="1"
+                    ></textarea>
+
+                    <button id="sendButton">
+                        发送
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <script src="js/main.js"></script>
+
+</body>
+</html>
