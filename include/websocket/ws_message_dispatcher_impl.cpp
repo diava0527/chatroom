@@ -24,7 +24,8 @@ void WsMessageDispatcherImpl::Dispatch (crow::websocket::connection& connection,
     //    - lobby.history.pull   -> 拉大厅历史
     //    - private.message.send -> 发私聊消息 + 单播
     //    - private.history.pull -> 拉私聊历史
-    auto msg = crow::json::load (rawMessage);
+
+    auto msg = crow::json::load (rawMessage);//获取发送来的json数据
     if (!msg)//检查是否返回错误对象
         return;
     std::string event = msg["event"].s ();
@@ -46,6 +47,7 @@ void WsMessageDispatcherImpl::Dispatch (crow::websocket::connection& connection,
     }
     else if (event == chat::ChatProtocol::kLobbySend) {
         auto message = lobby_service_->SendLobbyMessage (nickname, msg["payload"]["content"].s ());
+
         crow::json::wvalue response;
         response["event"] = static_cast<std::string>(chat::ChatProtocol::kLobbyReceive);
         response["payload"]["messageId"] = message.messageId;
@@ -77,6 +79,7 @@ void WsMessageDispatcherImpl::Dispatch (crow::websocket::connection& connection,
         std::string sessionID = msg["payload"]["privateSessionId"].s ();
         std::string content = msg["payload"]["content"].s ();
         auto m = private_chat_service_->SendPrivateMessage (sessionID, nickname, content);
+
         crow::json::wvalue response;
         response["event"] = static_cast<std::string>(chat::ChatProtocol::kPrivateReceive);
         response["payload"]["privateSessionId"] = sessionID;
@@ -90,6 +93,7 @@ void WsMessageDispatcherImpl::Dispatch (crow::websocket::connection& connection,
     else if (event == chat::ChatProtocol::kPrivateHistoryPull){
         std::string sessionID = msg["payload"]["privateSessionId"].s ();
         auto messages = private_chat_service_->PullPrivateHistory (sessionID);//获取历史记录数组
+
         crow::json::wvalue response;
         response["event"] = static_cast<std::string>(chat::ChatProtocol::kPrivateHistoryResponse);
         response["payload"]["privateSessionId"] = sessionID;
