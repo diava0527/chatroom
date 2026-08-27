@@ -20,6 +20,27 @@ add_executable(browser_chatroom_architecture
     src/main.cpp
     "include/storage/user_memory_store_impl.h"
     "include/storage/user_memory_store_impl.cpp"
+    "include/storage/lobby_memory_store_impl.cpp"
+    "include/storage/session_memory_store_impl.cpp"
+    "include/storage/private_chat_memory_store_impl.cpp"
     "include/user/user_service_impl.h"
     "include/user/user_service_impl.cpp"
- "include/user/auth_service_impl.cpp" "include/user/auth_service_impl.h")
+    "include/user/auth_service_impl.cpp" 
+    "include/user/auth_service_impl.h"
+    "include/chat/online_user_service.cpp"
+    "include/chat/lobby_service.cpp"
+    "include/chat/private_chat_service.cpp"
+    "include/chat/chat_controller.cpp"
+    "include/user/auth_controller_impl.h" 
+    "include/user/auth_controller_impl.cpp"
+    "include/websocket/ws_chat_controller_impl.cpp" 
+    "include/websocket/ws_chat_controller_impl.h" 
+    "include/websocket/ws_connection_manager_impl.cpp" 
+    "include/websocket/ws_connection_manager_impl.h" 
+    "include/websocket/ws_message_dispatcher_impl.cpp" 
+    "include/websocket/ws_message_dispatcher_impl.h"
+)
+
+if(WIN32)
+    target_link_libraries(browser_chatroom_architecture PRIVATE ws2_32)
+endif()
