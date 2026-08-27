@@ -40,10 +40,13 @@ namespace chatroom::user {
 	}
 
 	// 1)代码逻辑：校验昵称和密码，登录成功后生成 sessionId 并建立登录态映射。
-	//   注意已经登录的用户再次登录（多端登录）会将之前的登录态登出
+	//   注意已经登录的用户不能再次登录
 	// 2)返回值类型：std::optional<std::string>，原因是登录可能成功并返回 sessionId，也可能失败无结果，供登录 HTTP 接口和 WebSocket 建连流程调用。
 	// 3)参数类型：const std::string& nickname 与 const std::string& password，原因是登录凭证就是昵称和密码，参数直接对应登录要求。
 	std::optional<std::string> AuthServiceImpl::Login(const std::string& nickname, const std::string& password) {
+
+		std::lock_guard<std::mutex> lock(session_mtx);                               //对两个映射表上锁(防止同一账号同时重复登录
+
 		auto opt = user_store->FindUserByNickname(nickname);
 		if (!opt.has_value()) {                                                       //不存在该昵称用户
 			return std::nullopt;
@@ -53,15 +56,9 @@ namespace chatroom::user {
 			return std::nullopt;
 		}
 
-		std::lock_guard<std::mutex> lock(session_mtx);                               //读写前对两个映射表上锁
-
 		auto it = nickname_map.find(nickname);
 		if (it != nickname_map.end()) {                                              //该用户已经登录
-			std::string old_sid = it->second;                                        //获取上一次登录的sessionId
-
-			nickname_map.erase(it);
-			it = session_map.find(old_sid);
-			if (it != session_map.end()) session_map.erase(it);                      //删除上次登录的两个映射记录
+			return std::nullopt;
 		}
 
 		std::string sid;
