@@ -6,7 +6,7 @@
 *.sdf
 *.opensdf
 *.opendb
-
+/third_party
 # ±àÒëÊä³ö
 bin/
 obj/
@@ -39,3 +39,9 @@ Thumbs.db
 *.a
 *.out
 out/
+build/
+*.ninja
+CMakeCache.txt
+CMakeFiles/
+CMakeFiles
+CMakeFiles/
