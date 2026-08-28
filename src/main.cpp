@@ -102,6 +102,7 @@ const chatHistory = {
     lobby: []
 };
 const privateSessions = {};
+const unreadPrivateCounts = {};
 
 const userList = document.getElementById("userList");
 const chatTitle = document.getElementById("chatTitle");
@@ -153,6 +154,8 @@ function showMessages() {
     if (currentType === "private" && currentUser) {
         chatTitle.textContent = "和 " + currentUser + " 聊天";
         ensurePrivateHistory(currentUser);
+        unreadPrivateCounts[currentUser] = 0;
+        updateUserListFromState();
         renderMessages(chatHistory[currentUser]);
     }
 }
@@ -177,7 +180,11 @@ function upsertPrivateMessage(privateSessionId, message) {
     }
 
     if (currentType === "private" && currentUser === partner) {
+        unreadPrivateCounts[partner] = 0;
         showMessages();
+    } else if (message.senderNickname !== nickname) {
+        unreadPrivateCounts[partner] = (unreadPrivateCounts[partner] || 0) + 1;
+        updateUserListFromState();
     }
 }
 
@@ -279,9 +286,11 @@ function connectWebSocket() {
     };
 }
 
-function updateUserList(users) {
+let latestOnlineUsers = [];
+
+function updateUserListFromState() {
     userList.innerHTML = "";
-    users.forEach(function (username) {
+    latestOnlineUsers.forEach(function (username) {
         if (username === nickname) {
             return;
         }
@@ -289,11 +298,28 @@ function updateUserList(users) {
         const user = document.createElement("div");
         user.className = "user";
         user.dataset.user = username;
-        user.textContent = "🟢 " + username;
+
+        const statusDot = document.createElement("span");
+        statusDot.textContent = "🟢 ";
+        user.appendChild(statusDot);
+
+        const nameText = document.createElement("span");
+        nameText.textContent = username;
+        user.appendChild(nameText);
+
+        const unreadCount = unreadPrivateCounts[username] || 0;
+        if (unreadCount > 0) {
+            const badge = document.createElement("span");
+            badge.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
+            badge.style.cssText = "float:right;min-width:18px;height:18px;line-height:18px;padding:0 6px;margin-top:2px;border-radius:999px;background:#e53935;color:#fff;font-size:12px;text-align:center;";
+            user.appendChild(badge);
+        }
+
         user.addEventListener("click", async function () {
             currentType = "private";
             currentUser = username;
             ensurePrivateHistory(username);
+            unreadPrivateCounts[username] = 0;
 
             try {
                 if (!privateSessions[username]) {
@@ -314,6 +340,11 @@ function updateUserList(users) {
         });
         userList.appendChild(user);
     });
+}
+
+function updateUserList(users) {
+    latestOnlineUsers = users.slice();
+    updateUserListFromState();
 }
 
 lobby.addEventListener("click", function () {
