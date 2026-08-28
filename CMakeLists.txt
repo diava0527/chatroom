@@ -37,9 +37,11 @@ add_executable(browser_chatroom_architecture
     "include/websocket/ws_chat_controller_impl.h" 
     "include/websocket/ws_connection_manager_impl.cpp" 
     "include/websocket/ws_connection_manager_impl.h" 
-    "include/websocket/ws_message_dispatcher_impl.cpp" 
+    "include/websocket/ws_message_dispatcher_impl.cpp"
     "include/websocket/ws_message_dispatcher_impl.h"
 )
+
+target_compile_definitions(browser_chatroom_architecture PRIVATE CROW_USE_BOOST=1)
 
 if(WIN32)
     target_link_libraries(browser_chatroom_architecture PRIVATE ws2_32)
