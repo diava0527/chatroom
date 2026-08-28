@@ -22,6 +22,9 @@ add_executable(browser_chatroom_architecture
     src/main.cpp
     "include/storage/user_memory_store_impl.h"
     "include/storage/user_memory_store_impl.cpp"
+    "include/storage/lobby_memory_store_impl.cpp"
+    "include/storage/session_memory_store_impl.cpp"
+    "include/storage/private_chat_memory_store_impl.cpp"
     "include/user/user_service_impl.h"
     "include/user/user_service_impl.cpp"
     "include/user/auth_service_impl.cpp" 
@@ -42,6 +45,10 @@ add_executable(browser_chatroom_architecture
     "include/framework/crow_server_app.cpp"
     "include/framework/crow_router_registry.h"
     "include/framework/crow_router_registry.cpp"
-    "include/framework/json_response_builder.h"
-    "include/framework/json_response_builder.cpp"
- )
+)
+
+target_compile_definitions(browser_chatroom_architecture PRIVATE CROW_USE_BOOST=1)
+
+if(WIN32)
+    target_link_libraries(browser_chatroom_architecture PRIVATE ws2_32)
+endif()
