@@ -1,4 +1,5 @@
 #define CROW_USE_BOOST 1
+#define NOMINMAX
 
 #include "crow_all.h"
 
@@ -11,6 +12,8 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+
+#include <windows.h>
 
 #include "chat/chat_protocol.h"
 #include "chat/lobby_service_impl.h"
@@ -32,7 +35,9 @@ constexpr std::string_view kSessionHeader = "X-Session-Id";
 constexpr std::string_view kFrontendRoot = "frontend";
 
 std::filesystem::path ProjectRoot() {
-    return std::filesystem::path(__FILE__).parent_path().parent_path();
+    char buffer[MAX_PATH];
+    GetModuleFileNameA(nullptr, buffer, MAX_PATH);
+    return std::filesystem::path(buffer).parent_path();
 }
 
 std::optional<std::string> ReadTextFile(const std::filesystem::path& filePath) {
