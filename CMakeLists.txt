@@ -50,13 +50,31 @@ if(CHATROOM_ENABLE_MYSQL)
             NAMES libmysql.dll
             HINTS "${MYSQL_ROOT_DIR}/lib" "${MYSQL_ROOT_DIR}/bin"
         )
+        find_file(
+            MYSQL_SSL_RUNTIME
+            NAMES libssl-3-x64.dll
+            HINTS "${MYSQL_ROOT_DIR}/bin"
+        )
+        find_file(
+            MYSQL_CRYPTO_RUNTIME
+            NAMES libcrypto-3-x64.dll
+            HINTS "${MYSQL_ROOT_DIR}/bin"
+        )
 
-        if(NOT MYSQL_INCLUDE_DIR OR NOT MYSQL_CLIENT_LIBRARY)
+        if(NOT MYSQL_INCLUDE_DIR OR NOT MYSQL_CLIENT_LIBRARY OR
+           NOT MYSQL_CLIENT_RUNTIME OR NOT MYSQL_SSL_RUNTIME OR
+           NOT MYSQL_CRYPTO_RUNTIME)
             message(FATAL_ERROR
-                "MySQL client headers or library were not found. "
+                "MySQL client headers, library, or runtime DLLs were not found. "
                 "Set MYSQL_ROOT_DIR to the MySQL installation directory."
             )
         endif()
+
+        set(MYSQL_RUNTIME_FILES
+            "${MYSQL_CLIENT_RUNTIME}"
+            "${MYSQL_SSL_RUNTIME}"
+            "${MYSQL_CRYPTO_RUNTIME}"
+        )
 
         target_include_directories(chatroom_mysql PRIVATE "${MYSQL_INCLUDE_DIR}")
         target_link_libraries(chatroom_mysql PUBLIC "${MYSQL_CLIENT_LIBRARY}")
@@ -73,12 +91,12 @@ if(CHATROOM_ENABLE_MYSQL)
     )
     target_link_libraries(mysql_connection_check PRIVATE chatroom::mysql)
 
-    if(WIN32 AND MYSQL_CLIENT_RUNTIME)
+    if(WIN32)
         add_custom_command(
             TARGET mysql_connection_check
             POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${MYSQL_CLIENT_RUNTIME}"
+                ${MYSQL_RUNTIME_FILES}
                 "$<TARGET_FILE_DIR:mysql_connection_check>"
             VERBATIM
         )
@@ -121,12 +139,12 @@ if(CHATROOM_ENABLE_MYSQL)
         PRIVATE CHATROOM_ENABLE_MYSQL=1
     )
 
-    if(WIN32 AND MYSQL_CLIENT_RUNTIME)
+    if(WIN32)
         add_custom_command(
             TARGET browser_chatroom_architecture
             POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${MYSQL_CLIENT_RUNTIME}"
+                ${MYSQL_RUNTIME_FILES}
                 "$<TARGET_FILE_DIR:browser_chatroom_architecture>"
             VERBATIM
         )
