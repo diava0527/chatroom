@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+add_compile_definitions(CROW_USE_BOOST)
+
 if(MSVC)
     add_compile_options(/utf-8)
     add_compile_definitions(_WIN32_WINNT=0x0601)
@@ -39,7 +41,13 @@ add_executable(browser_chatroom_architecture
     "include/websocket/ws_connection_manager_impl.h" 
     "include/websocket/ws_message_dispatcher_impl.cpp" 
     "include/websocket/ws_message_dispatcher_impl.h"
+    "include/framework/crow_server_app.h"
+    "include/framework/crow_server_app.cpp"
+    "include/framework/crow_router_registry.h"
+    "include/framework/crow_router_registry.cpp"
 )
+
+target_compile_definitions(browser_chatroom_architecture PRIVATE CROW_USE_BOOST=1)
 
 if(WIN32)
     target_link_libraries(browser_chatroom_architecture PRIVATE ws2_32)
