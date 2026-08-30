@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+add_compile_definitions(CROW_USE_BOOST)
+
 if(MSVC)
     add_compile_options(/utf-8)
     add_compile_definitions(_WIN32_WINNT=0x0601)
@@ -140,6 +142,8 @@ target_compile_definitions(
     browser_chatroom_architecture
     PRIVATE CROW_USE_BOOST=1
 )
+
+target_compile_definitions(browser_chatroom_architecture PRIVATE CROW_USE_BOOST=1)
 
 if(WIN32)
     target_link_libraries(browser_chatroom_architecture PRIVATE ws2_32)

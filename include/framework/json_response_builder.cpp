@@ -1,7 +1,5 @@
 #include "framework/json_response_builder.h"
 
-#include <utility>
-
 namespace chatroom::framework {
 
 crow::response JsonResponseBuilder::BuildHttpJson(
