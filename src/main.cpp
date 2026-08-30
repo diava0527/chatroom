@@ -406,6 +406,9 @@ void FillMessageJson(crow::json::wvalue& target, const chatroom::models::Message
 
 }  // namespace
 
+#include <exception>
+#include <iostream>
+
 int main() {
     const auto projectRoot = ProjectRoot();
     const auto frontendRoot = projectRoot / kFrontendRoot;
