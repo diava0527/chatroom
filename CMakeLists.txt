@@ -21,6 +21,11 @@ option(CHATROOM_ENABLE_MYSQL "Build MySQL-backed storage support" ON)
 if(CHATROOM_ENABLE_MYSQL)
     add_library(chatroom_mysql STATIC
         include/storage/mysql/mysql_database.cpp
+        include/storage/mysql/mysql_statement.cpp
+        include/storage/mysql/mysql_schema.cpp
+        include/storage/mysql/mysql_user_store.cpp
+        include/storage/mysql/mysql_lobby_store.cpp
+        include/storage/mysql/mysql_private_chat_store.cpp
     )
 
     target_include_directories(chatroom_mysql
@@ -126,6 +131,14 @@ add_executable(browser_chatroom_architecture
     "include/websocket/ws_connection_manager_impl.h" 
     "include/websocket/ws_message_dispatcher_impl.cpp" 
     "include/websocket/ws_message_dispatcher_impl.h"
+    "include/framework/crow_server_app.cpp"
+    "include/framework/crow_router_registry.cpp"
+    "include/framework/json_response_builder.cpp"
+)
+
+target_compile_definitions(
+    browser_chatroom_architecture
+    PRIVATE CROW_USE_BOOST=1
 )
 
 if(WIN32)

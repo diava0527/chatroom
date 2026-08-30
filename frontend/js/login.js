@@ -2,69 +2,47 @@ const usernameInput = document.getElementById("username");
 const passwordInput = document.getElementById("password");
 const loginButton = document.getElementById("loginButton");
 
-loginButton.addEventListener("click", async function () {
-
+async function submitLogin() {
     const nickname = usernameInput.value.trim();
     const password = passwordInput.value;
 
-    // 检查输入
-    if (nickname === "" || password === "") {
-        alert("请输入用户名和密码");
+    if (!nickname || !password) {
+        showToast("请输入用户名和密码", "error");
         return;
     }
 
+    loginButton.disabled = true;
+    loginButton.textContent = "登录中…";
+
     try {
+        const result = await apiFetch("/api/v1/auth/login", {
+            method: "POST",
+            body: { nickname, password },
+        });
 
-        const response = await fetch(
-            "http://localhost:8080/api/v1/auth/login",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json"
-                },
-
-                body: JSON.stringify({
-                    nickname: nickname,
-                    password: password
-                })
-            }
-        );
-
-        const result = await response.json();
-
-        console.log("登录结果：", result);
-
-        // 登录成功
-        if (result.code === 0) {
-
-            // 保存昵称
-            localStorage.setItem(
-                "nickname",
-                result.data.nickname
-            );
-
-            // 保存 sessionId
-            localStorage.setItem(
-                "sessionId",
-                result.data.sessionId
-            );
-
-            alert("登录成功");
-
-            // 进入聊天室
+        saveSession(result.data.nickname, result.data.sessionId);
+        showToast("登录成功", "success");
+        setTimeout(() => {
             window.location.href = "index.html";
-
-        } else {
-
-            alert(result.message);
-        }
-
+        }, 300);
     } catch (error) {
-
-        console.error("登录失败：", error);
-        alert("无法连接服务器");
-
+        showToast(error.message || "无法连接服务器", "error");
+    } finally {
+        loginButton.disabled = false;
+        loginButton.textContent = "登录";
     }
+}
 
+loginButton.addEventListener("click", submitLogin);
+
+[usernameInput, passwordInput].forEach((input) => {
+    input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            submitLogin();
+        }
+    });
 });
+
+// 自动聚焦用户名输入框
+usernameInput.focus();

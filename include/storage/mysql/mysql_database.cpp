@@ -89,6 +89,9 @@ MySqlConfig MySqlConfig::FromEnvironment() {
     if (auto value = ReadEnvironment("DB_NAME"); value.has_value()) {
         config.database = *value;
     }
+    if (config.database.empty()) {
+        throw std::invalid_argument("DB_NAME is required");
+    }
     if (auto value = ReadEnvironment("DB_USER"); value.has_value()) {
         config.username = *value;
     }

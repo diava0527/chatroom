@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -16,6 +17,12 @@ public:
     // 2)返回值类型：void，原因是这里只定义大厅会话记录动作，供进入大厅接口调用。
     // 3)参数类型：const chatroom::models::LobbySession&，原因是进入大厅需要保存完整大厅会话信息，参数直接对应大厅历史边界需求。
     virtual void SaveLobbySession(const chatroom::models::LobbySession& session) = 0;
+
+    // 1)代码逻辑：按昵称查找该用户最早一次进入大厅的时间，作为大厅历史边界的稳定起点。
+    // 2)返回值类型：std::optional<std::string>，原因是该用户可能从未进入过大厅，无记录时返回空。
+    // 3)参数类型：const std::string& nickname，原因是历史边界必须绑定到具体用户，参数直接对应大厅会话需求。
+    virtual std::optional<std::string> FindEnteredAt(
+        const std::string& nickname) const = 0;
 
     // 1)代码逻辑：向大厅消息容器追加一条新消息，供消息广播和可见历史查询使用。
     // 2)返回值类型：void，原因是这里只定义内存追加动作，不需要同步返回额外业务对象，供大厅发言接口调用。

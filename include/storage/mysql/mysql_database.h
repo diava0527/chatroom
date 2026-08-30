@@ -15,8 +15,8 @@ struct MySqlConfig {
     unsigned int connectTimeoutSeconds = 5;
 
     // Reads DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD and
-    // DB_CONNECT_TIMEOUT_SECONDS. DB_USER is required; the password may be
-    // empty for explicitly configured local development accounts.
+    // DB_CONNECT_TIMEOUT_SECONDS. DB_NAME and DB_USER are required; the
+    // password may be empty for explicitly configured local accounts.
     static MySqlConfig FromEnvironment();
 };
 

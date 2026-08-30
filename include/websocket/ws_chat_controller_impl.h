@@ -26,6 +26,8 @@ public:
     void OnClose(crow::websocket::connection& connection) override;
 
 private:
+    void BroadcastOnlineUsers();
+
     std::shared_ptr<user::AuthService> auth_service_;
     std::shared_ptr<chat::OnlineUserService> online_user_service_;
     std::shared_ptr<WsConnectionManager> connection_manager_;

@@ -6,6 +6,10 @@ void WsConnectionManagerImpl::BindConnection(const std::string& nickname,
                                              crow::websocket::connection& connection) {
     // 把 nickname 和 connection 双向记进两个 map
     std::lock_guard<std::mutex> lock(mtx_);
+    const auto existing = nickname_to_conn_.find(nickname);
+    if (existing != nickname_to_conn_.end()) {
+        conn_to_nickname_.erase(existing->second);
+    }
     nickname_to_conn_[nickname] = &connection;
     conn_to_nickname_[&connection] = nickname;
 }
@@ -18,7 +22,11 @@ void WsConnectionManagerImpl::UnbindConnection(crow::websocket::connection& conn
     }
     auto cur = conn_to_nickname_[&connection];
     conn_to_nickname_.erase (&connection);
-    nickname_to_conn_.erase (cur);
+    const auto forward = nickname_to_conn_.find(cur);
+    if (forward != nickname_to_conn_.end()
+        && forward->second == &connection) {
+        nickname_to_conn_.erase(forward);
+    }
 
 }
 

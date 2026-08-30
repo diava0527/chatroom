@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mutex>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,10 @@ class LobbyMemoryStoreImpl final : public LobbyMemoryStore {
 public:
     /// 记录用户本次进入大厅的昵称和时间，用于保留进入时刻这一历史边界。
     void SaveLobbySession(const chatroom::models::LobbySession& session) override;
+
+    /// 按昵称返回该用户最早一次进入大厅的时间；无记录时返回空。
+    std::optional<std::string> FindEnteredAt(
+        const std::string& nickname) const override;
 
     /// 追加一条大厅广播消息，保持其写入顺序。
     void AppendLobbyMessage(const chatroom::models::Message& message) override;

@@ -9,6 +9,22 @@ void LobbyMemoryStoreImpl::SaveLobbySession(
     sessions_.push_back(session);
 }
 
+std::optional<std::string> LobbyMemoryStoreImpl::FindEnteredAt(
+    const std::string& nickname) const {
+    // 查询期间加锁，避免遍历会话时容器被其他线程修改。
+    std::lock_guard<std::mutex> lock(mutex_);
+
+    // 时间戳为固定宽度的 YYYY-MM-DD HH:MM:SS 格式，可直接进行字典序比较取最早。
+    std::optional<std::string> earliest;
+    for (const auto& session : sessions_) {
+        if (session.nickname == nickname
+            && (!earliest.has_value() || session.enteredAt < *earliest)) {
+            earliest = session.enteredAt;
+        }
+    }
+    return earliest;
+}
+
 void LobbyMemoryStoreImpl::AppendLobbyMessage(
     const chatroom::models::Message& message) {
     // 写入消息前加锁，确保消息容器保持一致状态。

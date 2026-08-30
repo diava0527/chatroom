@@ -20,7 +20,8 @@
 - 注册、登录、登出、创建私聊窗口、获取在线用户使用 HTTP
 - 大厅聊天、私聊消息、历史拉取、在线状态通知使用 WebSocket
 - 私聊记录使用 `map` 管理当前私聊窗口会话
-- 已加入 MySQL 连接层；当前业务 Store 仍使用内存实现，后续逐个替换为 MySQL Store
+- 用户、大厅消息、私聊窗口和私聊消息使用 MySQL Store
+- 登录 session、在线状态和 WebSocket 连接保留在进程内存中
 
 ## MySQL 本地接入
 
@@ -64,6 +65,28 @@
    ```
 
 连接成功后会输出 MySQL 服务版本、主机、数据库和账号，但不会输出密码。可用变量清单见 `.env.example`。
+
+程序首次启动时会在 `chatroom` 数据库中自动创建业务表，因此 `chat_app` 需要该数据库的建表和读写权限。
+
+## 启动聊天室
+
+1. 在已设置数据库环境变量的 PowerShell 中编译并启动后端：
+
+   ```powershell
+   cmake -S . -B out/build/mysql-vs -G "Visual Studio 17 2022" -A x64
+   cmake --build out/build/mysql-vs --config RelWithDebInfo --target browser_chatroom_architecture
+   .\out\build\mysql-vs\RelWithDebInfo\browser_chatroom_architecture.exe
+   ```
+
+2. 新开一个 PowerShell，在项目根目录启动前端静态服务器：
+
+   ```powershell
+   python -m http.server 5500 --directory frontend
+   ```
+
+3. 浏览器访问 `http://localhost:5500/login.html`。后端健康检查地址为 `http://127.0.0.1:8080/api/v1/health`。
+
+后端默认只允许 `http://localhost:5500` 跨域访问。需要使用其他前端地址时，在启动后端前设置 `FRONTEND_ORIGIN`。
 
 ## 架构要求
 

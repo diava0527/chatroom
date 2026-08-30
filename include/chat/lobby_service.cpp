@@ -2,6 +2,7 @@
 #include "chat/lobby_service_impl.h"
 #include "models/lobby_session.h"
 #include "common/constants.h"
+#include "common/random_id.h"
 
 #include <chrono>
 #include <ctime>
@@ -11,9 +12,9 @@
 
 namespace chatroom::chat {
 
-// 生成全局唯一消息 ID：形如 "msg_1"、"msg_2" 等
+// 生成全局唯一随机消息 ID，避免服务重启后与数据库旧记录冲突。
 std::string LobbyServiceImpl::GenerateMessageId() {
-    return "msg_" + std::to_string(id_counter_.fetch_add(1) + 1);
+    return chatroom::common::GenerateRandomHexId();
 }
 
 // 生成时间戳：格式为 "YYYY-MM-DD HH:MM:SS"，每个字段定宽补零，字符串比较等价于时间先后
@@ -36,8 +37,13 @@ LobbyServiceImpl::LobbyServiceImpl(std::shared_ptr<storage::LobbyMemoryStore> st
     : store_(std::move(store)) {
 }
 
-// 进入大厅：记录用户进入时间，作为历史可见边界
+// 进入大厅：记录用户进入时间，作为历史可见边界。
+// 若该用户已进入过大厅，则复用最早一次进入时间，避免刷新/重连后旧消息被过滤。
 std::string LobbyServiceImpl::EnterLobby(const std::string& nickname) {
+    if (auto existing = store_->FindEnteredAt(nickname);
+        existing.has_value()) {
+        return *existing;
+    }
     std::string enteredAt = GenerateTimestamp();
     chatroom::models::LobbySession session;
     session.nickname = nickname;

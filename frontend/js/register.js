@@ -3,63 +3,51 @@ const passwordInput = document.getElementById("password");
 const confirmPasswordInput = document.getElementById("confirmPassword");
 const registerButton = document.getElementById("registerButton");
 
-registerButton.addEventListener("click", async function () {
-
+async function submitRegister() {
     const nickname = usernameInput.value.trim();
     const password = passwordInput.value;
     const confirmPassword = confirmPasswordInput.value;
 
-    // 检查用户名和密码是否为空
-    if (nickname === "" || password === "" || confirmPassword === "") {
-        alert("请填写完整信息");
+    if (!nickname || !password || !confirmPassword) {
+        showToast("请填写完整信息", "error");
         return;
     }
 
-    // 检查两次密码是否一致
     if (password !== confirmPassword) {
-        alert("两次密码不一致");
+        showToast("两次密码不一致", "error");
         return;
     }
+
+    registerButton.disabled = true;
+    registerButton.textContent = "注册中…";
 
     try {
+        await apiFetch("/api/v1/auth/register", {
+            method: "POST",
+            body: { nickname, password },
+        });
 
-        const response = await fetch(
-            "http://localhost:8080/api/v1/auth/register",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type": "application/json"
-                },
-
-                body: JSON.stringify({
-                    nickname: nickname,
-                    password: password
-                })
-            }
-        );
-
-        const result = await response.json();
-
-        console.log("注册结果：", result);
-
-        if (result.code === 0) {
-
-            alert("注册成功");
-
-            // 注册成功后回到登录页面
+        showToast("注册成功", "success");
+        setTimeout(() => {
             window.location.href = "login.html";
-
-        } else {
-
-            alert(result.message);
-        }
-
+        }, 300);
     } catch (error) {
-
-        console.error("注册失败：", error);
-        alert("无法连接服务器");
-
+        showToast(error.message || "无法连接服务器", "error");
+    } finally {
+        registerButton.disabled = false;
+        registerButton.textContent = "注册";
     }
+}
 
+registerButton.addEventListener("click", submitRegister);
+
+[usernameInput, passwordInput, confirmPasswordInput].forEach((input) => {
+    input.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            submitRegister();
+        }
+    });
 });
+
+usernameInput.focus();
