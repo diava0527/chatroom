@@ -16,6 +16,75 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/third_party/boost_1_78_0
 )
 
+option(CHATROOM_ENABLE_MYSQL "Build MySQL-backed storage support" ON)
+
+if(CHATROOM_ENABLE_MYSQL)
+    add_library(chatroom_mysql STATIC
+        include/storage/mysql/mysql_database.cpp
+    )
+
+    target_include_directories(chatroom_mysql
+        PUBLIC ${CMAKE_SOURCE_DIR}/include
+    )
+
+    if(WIN32)
+        set(
+            MYSQL_ROOT_DIR
+            "C:/Program Files/MySQL/MySQL Server 8.0"
+            CACHE PATH
+            "MySQL Server or Connector/C installation directory"
+        )
+
+        find_path(
+            MYSQL_INCLUDE_DIR
+            NAMES mysql.h
+            HINTS "${MYSQL_ROOT_DIR}/include"
+        )
+        find_library(
+            MYSQL_CLIENT_LIBRARY
+            NAMES libmysql
+            HINTS "${MYSQL_ROOT_DIR}/lib"
+        )
+        find_file(
+            MYSQL_CLIENT_RUNTIME
+            NAMES libmysql.dll
+            HINTS "${MYSQL_ROOT_DIR}/lib" "${MYSQL_ROOT_DIR}/bin"
+        )
+
+        if(NOT MYSQL_INCLUDE_DIR OR NOT MYSQL_CLIENT_LIBRARY)
+            message(FATAL_ERROR
+                "MySQL client headers or library were not found. "
+                "Set MYSQL_ROOT_DIR to the MySQL installation directory."
+            )
+        endif()
+
+        target_include_directories(chatroom_mysql PRIVATE "${MYSQL_INCLUDE_DIR}")
+        target_link_libraries(chatroom_mysql PUBLIC "${MYSQL_CLIENT_LIBRARY}")
+    else()
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(MYSQLCLIENT REQUIRED IMPORTED_TARGET mysqlclient)
+        target_link_libraries(chatroom_mysql PUBLIC PkgConfig::MYSQLCLIENT)
+    endif()
+
+    add_library(chatroom::mysql ALIAS chatroom_mysql)
+
+    add_executable(mysql_connection_check
+        src/mysql_connection_check.cpp
+    )
+    target_link_libraries(mysql_connection_check PRIVATE chatroom::mysql)
+
+    if(WIN32 AND MYSQL_CLIENT_RUNTIME)
+        add_custom_command(
+            TARGET mysql_connection_check
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${MYSQL_CLIENT_RUNTIME}"
+                "$<TARGET_FILE_DIR:mysql_connection_check>"
+            VERBATIM
+        )
+    endif()
+endif()
+
 add_executable(browser_chatroom_architecture
     src/main.cpp
     "include/storage/user_memory_store_impl.h"
@@ -43,4 +112,23 @@ add_executable(browser_chatroom_architecture
 
 if(WIN32)
     target_link_libraries(browser_chatroom_architecture PRIVATE ws2_32)
+endif()
+
+if(CHATROOM_ENABLE_MYSQL)
+    target_link_libraries(browser_chatroom_architecture PRIVATE chatroom::mysql)
+    target_compile_definitions(
+        browser_chatroom_architecture
+        PRIVATE CHATROOM_ENABLE_MYSQL=1
+    )
+
+    if(WIN32 AND MYSQL_CLIENT_RUNTIME)
+        add_custom_command(
+            TARGET browser_chatroom_architecture
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${MYSQL_CLIENT_RUNTIME}"
+                "$<TARGET_FILE_DIR:browser_chatroom_architecture>"
+            VERBATIM
+        )
+    endif()
 endif()
