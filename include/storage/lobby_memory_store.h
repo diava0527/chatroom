@@ -20,7 +20,7 @@ public:
     // 1)代码逻辑：向大厅消息容器追加一条新消息，供消息广播和可见历史查询使用。
     // 2)返回值类型：void，原因是这里只定义内存追加动作，不需要同步返回额外业务对象，供大厅发言接口调用。
     // 3)参数类型：const chatroom::models::Message&，原因是大厅消息需要保留完整消息结构用于广播和历史展示。
-    virtual void AppendLobbyMessage(const chatroom::models::Message& message) = 0;
+    virtual void AppendLobbyMessage(const chatroom::models::Message& message) = 0;  
 
     // 1)代码逻辑：按进入大厅时间筛选当前用户可见的大厅历史，只返回进入后消息。
     // 2)返回值类型：std::vector<chatroom::models::Message>，原因是历史消息需要以前端可直接展示的列表形式返回，供大厅历史接口调用。

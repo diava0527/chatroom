@@ -1,0 +1,642 @@
+/* ================================
+   全局
+================================ */
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    background: #f1f3f6;
+    color: #222;
+}
+
+
+/* ================================
+   聊天室整体
+================================ */
+
+.chat-container {
+    width: 100%;
+    height: 100vh;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    overflow: hidden;
+}
+
+
+/* ================================
+   顶部
+================================ */
+
+.chat-header {
+    height: 64px;
+    min-height: 64px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 24px;
+
+    background: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+
+    font-size: 20px;
+    font-weight: 600;
+
+    user-select: none;
+}
+
+
+/* ================================
+   聊天主体
+================================ */
+
+.chat-main {
+    flex: 1;
+    min-height: 0;
+
+    display: flex;
+}
+
+
+/* ================================
+   左侧用户列表
+================================ */
+
+.user-list {
+    width: 240px;
+    min-width: 240px;
+
+    height: 100%;
+
+    padding: 18px 12px;
+
+    background: #f7f8fa;
+
+    border-right: 1px solid #e5e7eb;
+
+    overflow-y: auto;
+}
+
+.user-list h3 {
+    margin: 8px 10px 12px;
+
+    font-size: 13px;
+    font-weight: 600;
+
+    color: #8b93a1;
+
+    user-select: none;
+}
+
+
+/* ================================
+   用户 / 公共大厅
+================================ */
+
+.user {
+    width: 100%;
+
+    padding: 11px 13px;
+    margin-bottom: 4px;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    font-size: 14px;
+
+    transition:
+        background-color 0.15s ease,
+        transform 0.1s ease;
+}
+
+.user:hover {
+    background: #e9edf3;
+}
+
+.user:active {
+    transform: scale(0.98);
+}
+
+
+/* 公共大厅 */
+
+.user.lobby {
+    background: #e5e9f0;
+
+    font-weight: 600;
+}
+
+.user.lobby:hover {
+    background: #dce2eb;
+}
+
+
+/* ================================
+   右侧聊天区域
+================================ */
+
+.chat-area {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    background: #ffffff;
+}
+
+
+/* ================================
+   当前聊天标题
+================================ */
+
+.chat-title {
+    height: 60px;
+    min-height: 60px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 0 22px;
+
+    border-bottom: 1px solid #e5e7eb;
+
+    font-size: 16px;
+    font-weight: 600;
+
+    color: #252a31;
+
+    user-select: none;
+}
+
+
+/* ================================
+   消息区域
+================================ */
+
+#chatBox {
+    flex: 1;
+    min-height: 0;
+
+    padding: 22px 24px;
+
+    overflow-y: auto;
+
+    background: #fafbfc;
+
+    scroll-behavior: smooth;
+}
+
+
+/* 单条消息 */
+
+#chatBox p {
+    width: fit-content;
+    max-width: min(70%, 650px);
+
+    margin: 0 0 12px;
+
+    padding: 10px 14px;
+
+    background: #eef1f5;
+
+    border-radius: 10px;
+
+    font-size: 14px;
+
+    line-height: 1.5;
+
+    word-break: break-word;
+
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+
+/* ================================
+   输入区域
+================================ */
+
+.input-area {
+    width: 100%;
+
+    display: flex;
+    align-items: flex-end;
+
+    padding: 14px 18px;
+
+    border-top: 1px solid #e5e7eb;
+
+    background: #ffffff;
+}
+
+
+/* 输入框 */
+
+#messageInput {
+    flex: 1;
+    min-width: 0;
+
+    min-height: 44px;
+    max-height: 120px;
+
+    padding: 11px 13px;
+
+    border: 1px solid #d9dee7;
+    border-radius: 9px;
+
+    outline: none;
+
+    resize: none;
+
+    background: #f8f9fb;
+
+    font-family: "Segoe UI", "Microsoft YaHei", Arial, sans-serif;
+    font-size: 14px;
+
+    line-height: 20px;
+
+    transition:
+        border-color 0.15s ease,
+        background-color 0.15s ease;
+}
+
+#messageInput:focus {
+    border-color: #9aa4b2;
+
+    background: #ffffff;
+}
+
+#messageInput::placeholder {
+    color: #9aa1ac;
+}
+
+
+/* ================================
+   发送按钮
+================================ */
+
+#sendButton {
+    width: 76px;
+    min-width: 76px;
+
+    height: 44px;
+
+    margin-left: 10px;
+
+    border: none;
+    border-radius: 9px;
+
+    background: #303846;
+
+    color: #ffffff;
+
+    font-size: 14px;
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.15s ease,
+        transform 0.1s ease;
+}
+
+#sendButton:hover {
+    background: #202733;
+}
+
+#sendButton:active {
+    transform: scale(0.96);
+}
+
+
+/* ================================
+   登录 / 注册页面
+================================ */
+
+.login-container {
+    width: min(380px, calc(100% - 40px));
+
+    margin: 0 auto;
+
+    padding: 36px;
+
+    background: #ffffff;
+
+    border-radius: 14px;
+
+    box-shadow:
+        0 10px 35px rgba(0, 0, 0, 0.08);
+
+    text-align: center;
+}
+
+
+/*
+   登录页面如果 body 只有 login-container，
+   使用这个方式让它垂直居中
+*/
+
+body:has(.login-container) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 100vh;
+}
+
+
+.login-container h1 {
+    margin: 0 0 8px;
+
+    font-size: 25px;
+    font-weight: 600;
+}
+
+.login-container h2 {
+    margin: 0 0 25px;
+
+    font-size: 18px;
+    font-weight: 500;
+
+    color: #7b8492;
+}
+
+
+/* 输入框 */
+
+.login-container input {
+    display: block;
+
+    width: 100%;
+
+    padding: 12px 14px;
+
+    margin: 12px 0;
+
+    border: 1px solid #d9dee7;
+
+    border-radius: 8px;
+
+    outline: none;
+
+    background: #f8f9fb;
+
+    font-size: 14px;
+
+    transition:
+        border-color 0.15s ease,
+        background-color 0.15s ease;
+}
+
+.login-container input:focus {
+    border-color: #9aa4b2;
+
+    background: #ffffff;
+}
+
+
+/* 登录 / 注册按钮 */
+
+.login-container button {
+    width: 100%;
+
+    padding: 12px;
+
+    margin-top: 12px;
+
+    border: none;
+
+    border-radius: 8px;
+
+    background: #303846;
+
+    color: #ffffff;
+
+    font-size: 14px;
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.15s ease,
+        transform 0.1s ease;
+}
+
+.login-container button:hover {
+    background: #202733;
+}
+
+.login-container button:active {
+    transform: scale(0.98);
+}
+
+
+/* 登录注册链接 */
+
+.login-container p {
+    margin-top: 20px;
+
+    font-size: 13px;
+
+    color: #7b8492;
+}
+
+.login-container a {
+    color: #4b5563;
+
+    text-decoration: none;
+}
+
+.login-container a:hover {
+    text-decoration: underline;
+}
+
+
+/* ================================
+   滚动条
+================================ */
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd1da;
+
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #aeb6c2;
+}
+
+
+/* ================================
+   窗口较窄时
+================================ */
+
+@media (max-width: 700px) {
+
+    .user-list {
+        width: 190px;
+        min-width: 190px;
+    }
+
+    .chat-header {
+        padding: 0 16px;
+    }
+
+    #chatBox {
+        padding: 18px;
+    }
+
+    .input-area {
+        padding: 12px;
+    }
+}
+
+
+/* ================================
+   手机 / 非常窄窗口
+================================ */
+
+@media (max-width: 500px) {
+
+    .user-list {
+        width: 150px;
+        min-width: 150px;
+
+        padding: 12px 8px;
+    }
+
+    .user {
+        padding: 10px 8px;
+
+        font-size: 13px;
+    }
+
+    .chat-title {
+        padding: 0 15px;
+    }
+
+    #chatBox {
+        padding: 15px;
+    }
+
+    #messageInput {
+        font-size: 13px;
+    }
+
+    #sendButton {
+        width: 65px;
+        min-width: 65px;
+    }
+}
+
+/* ================================
+   聊天气泡
+================================ */
+
+.message-wrapper {
+    display: flex;
+    flex-direction: column;
+
+    margin-bottom: 16px;
+
+    max-width: 75%;
+}
+
+
+/* 别人的消息 */
+
+.message-other {
+    align-items: flex-start;
+}
+
+
+/* 自己的消息 */
+
+.message-self {
+    align-items: flex-end;
+
+    margin-left: auto;
+}
+
+
+/* 昵称 */
+
+.message-sender {
+    margin-bottom: 5px;
+
+    font-size: 12px;
+
+    color: #8b93a1;
+}
+
+
+/* 消息气泡 */
+
+.message-bubble {
+    padding: 10px 14px;
+
+    border-radius: 10px;
+
+    font-size: 14px;
+
+    line-height: 1.5;
+
+    word-break: break-word;
+
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+
+/* 别人的气泡 */
+
+.message-other .message-bubble {
+    background: #eef1f5;
+
+    color: #222;
+
+    border-top-left-radius: 3px;
+}
+
+
+/* 自己的气泡 */
+
+.message-self .message-bubble {
+    background: #303846;
+
+    color: white;
+
+    border-top-right-radius: 3px;
+}
+
+/* ================================
+   消息时间
+================================ */
+
+.message-time {
+    margin-top: 4px;
+
+    font-size: 11px;
+
+    color: #a0a7b2;
+}
