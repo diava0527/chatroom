@@ -1,46 +1,57 @@
 #pragma once
+
+#include <chrono>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <unordered_map>
+
 #include "auth_service.h"
 #include "storage/user_memory_store.h"
-#include<memory>
-#include <unordered_map>
-#include <mutex>
-#include<optional>
 
 namespace chatroom::user {
 
 class AuthServiceImpl : public AuthService {
+public:
+    using Clock = std::chrono::steady_clock;
+    using Now = std::function<Clock::time_point()>;
+    using SessionEnded = std::function<void(const std::string&)>;
 
-	private:
-		std::shared_ptr<storage::UserMemoryStore> user_store;         //¹²ÏíÖ¸ÕëÊ¹ÓÃUserMemoryStoreµÄ½Ó¿Ú
-		std::unordered_map<std::string, std::string> session_map;     //sessionId->êÇ³ÆÓ³Éä£¬¿ÉÍ¨¹ısessionIdÕÒêÇ³Æ£¨´´½¨ĞÂsessionIdÊ±Ğ£Ñé£©
-		std::unordered_map<std::string, std::string> nickname_map;    //êÇ³Æ->sessionIdÓ³Éä£¬¿ÉÍ¨¹ıêÇ³Æ²éÕÒsessionId£¨ÓÃÓÚÅĞ¶ÏÄ³êÇ³ÆÓÃ»§ÊÇ·ñÔÚÏß£©
+    explicit AuthServiceImpl(std::shared_ptr<storage::UserMemoryStore> store,
+                             SessionEnded onSessionEnded = {},
+                             Now now = [] { return std::chrono::steady_clock::now(); });
 
-		mutable std::mutex session_mtx;                               //¶ÁĞ´Á½ÕÅÓ³Éä±íÊ±ÉÏËø£¬·ÀÖ¹²¢·¢¶ÁĞ´¾ºÕù
+    bool Register(const std::string& nickname, const std::string& password) override;
+    std::optional<std::string> Login(const std::string& nickname, const std::string& password) override;
+    bool Logout(const std::string& sessionId) override;
+    std::optional<std::string> ValidateSession(const std::string& sessionId) const override;
+    std::optional<std::string> AttachConnection(const std::string& sessionId, const void* connection) override;
+    void DetachConnection(const std::string& sessionId, const void* connection) override;
+    bool ValidateConnection(const std::string& sessionId, const void* connection) const override;
 
-	public:
+    // 1)ä»£ç é€»è¾‘ï¼šå›æ”¶è¶…æ—¶çš„æœªè¿æ¥ä¼šè¯ï¼Œæ¸…ç†ç§èŠå¹¶è§£é™¤æ˜µç§°å ç”¨ã€‚
+    // 2)è¿”å›å€¼ç±»å‹ï¼švoidï¼Œä¾›æœåŠ¡å™¨å‘¨æœŸä»»åŠ¡è°ƒç”¨ã€‚
+    // 3)å‚æ•°ç±»å‹ï¼šæ— å‚æ•°ï¼Œä½¿ç”¨æ„é€ æ—¶æ³¨å…¥çš„å•è°ƒæ—¶é’Ÿï¼Œæµ‹è¯•æ— éœ€çœŸå®ç­‰å¾…ã€‚
+    void ExpireDisconnectedSessions();
 
-		explicit AuthServiceImpl(std::shared_ptr<storage::UserMemoryStore> store);    
+private:
+    struct Session {
+        std::string nickname;
+        const void* connection = nullptr;
+        bool wasConnected = false;
+        Clock::time_point disconnectedAt;
+    };
+    bool IsExpired(const Session& session) const;
+    void RemoveSession(const std::string& sessionId);
 
-		// 1)´úÂëÂß¼­£ºĞ£ÑéêÇ³ÆÊÇ·ñÖØ¸´²¢Íê³É×¢²á£¬½«ĞÂÓÃ»§Ğ´ÈëÄÚ´æÓÃ»§´æ´¢¡£
-		// 2)·µ»ØÖµÀàĞÍ£ºbool£¬Ô­ÒòÊÇ×¢²á½×¶ÎÖ»ĞèÒª±í´ï³É¹¦»òÊ§°Ü£¬¹©×¢²á HTTP ½Ó¿Úµ÷ÓÃ¡£
-		// 3)²ÎÊıÀàĞÍ£ºconst std::string& nickname Óë const std::string& password£¬Ô­ÒòÊÇ×¢²áÒµÎñ×îĞ¡ÊäÈë¾ÍÊÇÎ¨Ò»êÇ³ÆºÍÓÃ»§×ÔÉèÃÜÂë£¬²ÎÊıÖ±½Ó¶ÔÓ¦×¢²áÒªÇó¡£
-		bool Register(const std::string& nickname, const std::string& password) override;
-
-		// 1)´úÂëÂß¼­£ºĞ£ÑéêÇ³ÆºÍÃÜÂë£¬µÇÂ¼³É¹¦ºóÉú³É sessionId ²¢½¨Á¢µÇÂ¼Ì¬Ó³Éä¡£
-		// 2)·µ»ØÖµÀàĞÍ£ºstd::optional<std::string>£¬Ô­ÒòÊÇµÇÂ¼¿ÉÄÜ³É¹¦²¢·µ»Ø sessionId£¬Ò²¿ÉÄÜÊ§°ÜÎŞ½á¹û£¬¹©µÇÂ¼ HTTP ½Ó¿ÚºÍ WebSocket ½¨Á¬Á÷³Ìµ÷ÓÃ¡£
-		// 3)²ÎÊıÀàĞÍ£ºconst std::string& nickname Óë const std::string& password£¬Ô­ÒòÊÇµÇÂ¼Æ¾Ö¤¾ÍÊÇêÇ³ÆºÍÃÜÂë£¬²ÎÊıÖ±½Ó¶ÔÓ¦µÇÂ¼ÒªÇó¡£
-		std::optional<std::string> Login(const std::string& nickname, const std::string& password) override;
-
-
-		// 1)´úÂëÂß¼­£º¸ù¾İ sessionId ×¢Ïúµ±Ç°µÇÂ¼Ì¬£¬²¢´¥·¢Ïà¹ØÔÚÏß×´Ì¬ºÍË½ÁÄ»á»°ÇåÀí¡£
-		// 2)·µ»ØÖµÀàĞÍ£ºbool£¬Ô­ÒòÊÇµÇ³öÖ»ĞèÒª±í´ï¸Ã sessionId ÊÇ·ñÓĞĞ§²¢ÊÇ·ñ³É¹¦ÇåÀí£¬¹©µÇ³ö HTTP ½Ó¿Úµ÷ÓÃ¡£
-		// 3)²ÎÊıÀàĞÍ£ºconst std::string& sessionId£¬Ô­ÒòÊÇ¿Í»§¶ËµÇÂ¼ºóÖ»³ÖÓĞ sessionId£¬²ÎÊıÖ±½Ó¶ÔÓ¦µÇÂ¼Ì¬Éè¼Æ¡£
-		bool Logout(const std::string& sessionId) override;
-
-		// 1)´úÂëÂß¼­£º¸ù¾İ sessionId ½âÎöµ±Ç°µÇÂ¼ÓÃ»§êÇ³Æ£¬ÓÃÓÚÊÜ±£»¤ HTTP ½Ó¿ÚºÍ WebSocket Á¬½Ó¼øÈ¨¡£
-		// 2)·µ»ØÖµÀàĞÍ£ºstd::optional<std::string>£¬Ô­ÒòÊÇ sessionId ¿ÉÄÜÓĞĞ§Ò²¿ÉÄÜÊ§Ğ§£¬¹©ÁÄÌìÄ£¿éºÍ WebSocket Ä£¿éµ÷ÓÃ¡£
-		// 3)²ÎÊıÀàĞÍ£ºconst std::string& sessionId£¬Ô­ÒòÊÇ¸ÃÖµÊÇÏµÍ³Î¨Ò»µÇÂ¼Ì¬Æ¾Ö¤£¬²ÎÊıÖ±½Ó¶ÔÓ¦¼øÈ¨Âß¼­¡£
-		std::optional<std::string> ValidateSession(const std::string& sessionId) const override;
+    std::shared_ptr<storage::UserMemoryStore> user_store;
+    std::unordered_map<std::string, Session> session_map;
+    std::unordered_map<std::string, std::string> nickname_map;
+    mutable std::mutex session_mtx;
+    SessionEnded onSessionEnded_;
+    Now now_;
 };
 
-}
+}  // namespace chatroom::user

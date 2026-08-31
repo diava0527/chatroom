@@ -346,16 +346,53 @@ function setConnectionStatus(text, state) {
     connectionStatus.className = `conn-status conn-${state}`;
 }
 
-function connectWebSocket() {
+let connecting = false;
+
+function returnToLogin() {
+    manualClose = true;
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+    if (ws) ws.close();
+    ws = null;
+    // 其他标签页可能已经写入新登录，不能清掉新会话。
+    if (getSessionId() === sessionId) clearSession();
+    window.location.href = "login.html";
+}
+
+function scheduleReconnect() {
+    if (manualClose || reconnectTimer) return;
+    reconnectAttempt += 1;
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttempt - 1), 10000);
+    reconnectTimer = setTimeout(connectWebSocket, delay);
+}
+
+async function connectWebSocket() {
+    if (manualClose || connecting) return;
     if (reconnectTimer) {
         clearTimeout(reconnectTimer);
         reconnectTimer = null;
     }
 
     setConnectionStatus("连接中…", "connecting");
-    ws = new WebSocket(buildWsUrl());
+    if (getSessionId() !== sessionId) { returnToLogin(); return; }
+    connecting = true;
+    try {
+        await apiFetch("/api/v1/users/online", { auth: true });
+    } catch (error) {
+        connecting = false;
+        if (error.code === 1003) { returnToLogin(); return; }
+        setConnectionStatus("连接失败，正在重试", "offline");
+        scheduleReconnect();
+        return;
+    }
+    connecting = false;
+    if (manualClose) return;
+    if (getSessionId() !== sessionId) { returnToLogin(); return; }
+    const connection = new WebSocket(buildWsUrl());
+    ws = connection;
 
     ws.onopen = function () {
+        if (ws !== connection || manualClose) { connection.close(); return; }
         reconnectAttempt = 0;
         setConnectionStatus("已连接", "online");
         ws.send(JSON.stringify({ event: "lobby.enter" }));
@@ -375,6 +412,7 @@ function connectWebSocket() {
     };
 
     ws.onmessage = function (event) {
+        if (ws !== connection || manualClose) return;
         try {
             handleWebSocketMessage(JSON.parse(event.data));
         } catch (error) {
@@ -383,12 +421,10 @@ function connectWebSocket() {
     };
 
     ws.onclose = function () {
+        if (ws !== connection) return;
+        ws = null;
         setConnectionStatus("已断开", "offline");
-        if (!manualClose) {
-            reconnectAttempt += 1;
-            const delay = Math.min(1000 * Math.pow(2, reconnectAttempt - 1), 10000);
-            reconnectTimer = setTimeout(connectWebSocket, delay);
-        }
+        scheduleReconnect();
     };
 
     ws.onerror = function () {
@@ -475,6 +511,27 @@ logoutButton.addEventListener("click", async function () {
 });
 
 // ---------- 初始化 ----------
+
+// 关闭/刷新页面只断开连接，由后端回收占用；不在卸载时发不可靠的退出请求。
+window.addEventListener("pagehide", function () {
+    manualClose = true;
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+    const oldConnection = ws;
+    ws = null;
+    if (oldConnection) oldConnection.close();
+});
+
+window.addEventListener("pageshow", function (event) {
+    if (event.persisted) {
+        manualClose = false;
+        connectWebSocket();
+    }
+});
+
+window.addEventListener("storage", function (event) {
+    if (event.key === ChatConfig.SESSION_KEY && getSessionId() !== sessionId) returnToLogin();
+});
 
 showMessages();
 connectWebSocket();

@@ -1,6 +1,7 @@
 #include "crow_all.h"
 
 #include <cstdlib>
+#include <chrono>
 #include <exception>
 #include <functional>
 #include <iostream>
@@ -106,13 +107,16 @@ int main() {
             std::make_shared<chatroom::storage::mysql::MySqlPrivateChatStore>(
                 database);
 
-        auto authService =
-            std::make_shared<chatroom::user::AuthServiceImpl>(userStore);
         auto lobbyService =
             std::make_shared<chatroom::chat::LobbyServiceImpl>(lobbyStore);
         auto privateChatService =
             std::make_shared<chatroom::chat::PrivateChatServiceImpl>(
                 privateChatStore);
+        auto authService =
+            std::make_shared<chatroom::user::AuthServiceImpl>(
+                userStore, [privateChatService](const std::string& nickname) {
+                    privateChatService->ClearSessionsByUser(nickname);
+                });
         auto onlineUserService =
             std::make_shared<chatroom::chat::OnlineUserServiceImpl>();
         auto responseBuilder =
@@ -152,6 +156,13 @@ int main() {
 
         routerRegistry.AddRegistrar(
             [=](chatroom::framework::ChatroomApp& app) {
+                app.tick(std::chrono::seconds(15), [authService] {
+                    try {
+                        authService->ExpireDisconnectedSessions();
+                    } catch (const std::exception& error) {
+                        std::cerr << "Session cleanup failed: " << error.what() << '\n';
+                    }
+                });
                 CROW_ROUTE(app, "/")([] {
                     return "chatroom backend is running";
                 });
@@ -199,10 +210,6 @@ int main() {
                                     request.get_header_value(kSessionHeader);
                                 const auto nickname =
                                     authService->ValidateSession(sessionId);
-                                if (nickname.has_value()) {
-                                    privateChatService->ClearSessionsByUser(
-                                        *nickname);
-                                }
                                 auto response = authController->Logout(request);
                                 if (nickname.has_value() && response.code == 200) {
                                     onlineUserService->MarkOffline(*nickname);

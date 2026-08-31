@@ -1,7 +1,9 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <string>
+#include <unordered_map>
 
 #include "chat/online_user_service.h"
 #include "user/auth_service.h"
@@ -27,6 +29,8 @@ public:
 
 private:
     void BroadcastOnlineUsers();
+    std::mutex lifecycleMutex_;
+    std::unordered_map<const void*, std::string> connectionSessions_;
 
     std::shared_ptr<user::AuthService> auth_service_;
     std::shared_ptr<chat::OnlineUserService> online_user_service_;

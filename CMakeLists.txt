@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 project(browser_chatroom_architecture LANGUAGES CXX)
 
+include(CTest)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -107,6 +109,38 @@ if(CHATROOM_ENABLE_MYSQL)
                 "$<TARGET_FILE_DIR:mysql_connection_check>"
             VERBATIM
         )
+    endif()
+endif()
+
+if(BUILD_TESTING)
+    add_executable(session_lifecycle_test
+        tests/session_lifecycle_test.cpp
+        include/user/auth_service_impl.cpp
+        include/websocket/ws_chat_controller_impl.cpp
+        include/websocket/ws_connection_manager_impl.cpp
+        include/chat/online_user_service.cpp
+    )
+    if(WIN32)
+        target_link_libraries(session_lifecycle_test PRIVATE ws2_32)
+    endif()
+    add_test(NAME session_lifecycle COMMAND session_lifecycle_test)
+    find_program(CHATROOM_NODE_EXECUTABLE NAMES node node.exe)
+    if(CHATROOM_NODE_EXECUTABLE)
+        add_executable(session_socket_server
+            tests/session_socket_server.cpp
+            include/user/auth_service_impl.cpp
+            include/user/auth_controller_impl.cpp
+            include/storage/user_memory_store_impl.cpp
+            include/websocket/ws_chat_controller_impl.cpp
+            include/websocket/ws_connection_manager_impl.cpp
+            include/chat/online_user_service.cpp
+        )
+        if(WIN32)
+            target_link_libraries(session_socket_server PRIVATE ws2_32)
+        endif()
+        add_test(NAME session_socket_integration COMMAND "${CHATROOM_NODE_EXECUTABLE}"
+            "${CMAKE_SOURCE_DIR}/tests/session_socket_test.cjs" "$<TARGET_FILE:session_socket_server>")
+        set_tests_properties(session_socket_integration PROPERTIES TIMEOUT 30)
     endif()
 endif()
 

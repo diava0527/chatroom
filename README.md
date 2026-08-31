@@ -88,6 +88,25 @@
 
 后端默认只允许 `http://localhost:5500` 跨域访问。需要使用其他前端地址时，在启动后端前设置 `FRONTEND_ORIGIN`。
 
+## 关闭网页与重新登录
+
+关闭网页后，WebSocket 断连会释放昵称的在线登录占用，用户可以立即用正确密码重新登录；新登录会撤销旧 session，并清理旧私聊窗口。仍有活动连接的账号继续拒绝重复登录。
+
+为避免刷新、短暂断网或小程序切后台导致误退出，断连会话保留 5 分钟重连宽限期。期间原 session 可以恢复，HTTP 查询不会延长宽限期。超时后凭据失效，服务器每 15 秒回收一次并清理私聊。登录后一直未建立 WebSocket 的会话在 15 秒后失效。旧连接迟到的关闭回调不能释放新连接的登录占用。
+
+网页前端在页面离开时关闭连接，不依赖可能丢失的 unload 退出请求；重连前验证 session，失效则返回登录页，避免无限重连。
+
+回归检查：
+
+```powershell
+cmake -S . -B out/build/session-fix -G "Visual Studio 17 2022" -A x64
+cmake --build out/build/session-fix --config RelWithDebInfo --target session_lifecycle_test session_socket_server browser_chatroom_architecture mysql_connection_check
+ctest --test-dir out/build/session-fix -C RelWithDebInfo --output-on-failure
+node --check frontend/js/main.js
+```
+
+运行中的旧后端不会自动加载新代码。在原启动后端的 PowerShell 中执行 `./apply-backend-fix.ps1` 即可先检查数据库连接，再备份旧程序、更新原运行路径并重启；没有数据库环境变量时会安全提示输入密码，不会写入源码或文件。更新失败会还原旧程序。重启会清空内存中的登录状态，但不会删除账号数据。
+
 ## 架构要求
 
 - 不实现具体业务逻辑代码
