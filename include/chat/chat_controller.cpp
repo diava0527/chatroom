@@ -49,11 +49,19 @@ crow::response ChatControllerImpl::CreatePrivateSession(const crow::request& req
 
     // 2. 解析请求体，取出目标昵称targetNickname
     auto body = crow::json::load(request.body);
-    if (body.error() || !body.has(kTargetNicknameField)) {
+    if (body.error() || !body.has(kTargetNicknameField)
+        || body[kTargetNicknameField].t() != crow::json::type::String) {
         return response_builder_->BuildHttpJson(
             chatroom::common::kInvalidParamCode, "missing targetNickname", std::nullopt);
     }
     std::string targetNickname = body[kTargetNicknameField].s();
+
+    if (targetNickname.empty() || targetNickname == senderNickname) {
+        return response_builder_->BuildHttpJson(
+            chatroom::common::kInvalidParamCode,
+            "invalid targetNickname",
+            std::nullopt);
+    }
 
     // 3. 检查目标用户是否在线
     std::vector<std::string> onlineUsers = online_user_service_->ListOnlineUsers();

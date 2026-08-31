@@ -1,7 +1,5 @@
 #pragma once
 
-#include <atomic>
-#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -17,10 +15,7 @@ private:
     /// 私聊存储：通过依赖注入传入，本类只负责造数据与转发
     std::shared_ptr<storage::PrivateChatMemoryStore> store_;
 
-    /// 自增计数器：用于生成全局唯一私聊消息 ID
-    std::atomic<std::uint64_t> id_counter_{0};
-
-    /// 生成全局唯一消息 ID（形如 "msg_1"、"msg_2"）
+    /// 生成跨进程重启仍保持唯一的随机消息 ID。
     std::string GenerateMessageId();
 
     /// 生成时间戳（格式 "YYYY-MM-DD HH:MM:SS"，定宽补零保证字符串比较等价于时间先后）
@@ -40,6 +35,9 @@ public:
 
     std::vector<chatroom::models::Message> PullPrivateHistory(
         const std::string& privateSessionId) const override;
+
+    bool IsParticipant(const std::string& privateSessionId,
+                       const std::string& nickname) const override;
 
     void ClearSessionsByUser(const std::string& nickname) override;
 };

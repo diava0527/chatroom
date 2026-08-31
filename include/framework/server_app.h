@@ -1,6 +1,6 @@
 #pragma once
 
-#include "crow_all.h"
+#include "framework/app.h"
 
 namespace chatroom::framework {
 
@@ -16,7 +16,7 @@ public:
     // 1)代码逻辑：返回当前服务器内部持有的 Crow 应用实例，供路由注册模块完成 HTTP 和 WebSocket 挂载。
     // 2)返回值类型：crow::SimpleApp&，原因是路由注册必须直接操作应用对象，供 RouterRegistry 调用。
     // 3)参数类型：无参数，原因是这里只是读取当前服务对象内部状态，不依赖外部输入。
-    virtual crow::SimpleApp& GetApp() = 0;
+    virtual ChatroomApp& GetApp() = 0;
 };
 
 }  // namespace chatroom::framework

@@ -1,5 +1,6 @@
 // 私聊服务实现：对应 include/chat/private_chat_service_impl.h 头文件
 #include "chat/private_chat_service_impl.h"
+#include "common/random_id.h"
 
 #include <chrono>
 #include <ctime>
@@ -9,9 +10,9 @@
 
 namespace chatroom::chat {
 
-// 生成全局唯一消息 ID：形如 "msg_1"、"msg_2" 等
+// 生成全局唯一随机消息 ID，避免服务重启后与数据库旧记录冲突。
 std::string PrivateChatServiceImpl::GenerateMessageId() {
-    return "msg_" + std::to_string(id_counter_.fetch_add(1) + 1);
+    return chatroom::common::GenerateRandomHexId();
 }
 
 // 生成时间戳：格式为 "YYYY-MM-DD HH:MM:SS"，每个字段定宽补零，字符串比较等价于时间先后
@@ -80,6 +81,15 @@ chatroom::models::Message PrivateChatServiceImpl::SendPrivateMessage(
 std::vector<chatroom::models::Message> PrivateChatServiceImpl::PullPrivateHistory(
     const std::string& privateSessionId) const {
     return store_->ListMessages(privateSessionId);
+}
+
+bool PrivateChatServiceImpl::IsParticipant(
+    const std::string& privateSessionId,
+    const std::string& nickname) const {
+    const auto session = store_->FindSession(privateSessionId);
+    return session.has_value()
+        && (session->senderNickname == nickname
+            || session->receiverNickname == nickname);
 }
 
 // 清理用户会话：删除与该用户相关的全部私聊窗口

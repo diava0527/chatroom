@@ -1,114 +1,117 @@
 #include "auth_service_impl.h"
-#include <random>
-#include <string>
-#include <sstream>
-#include <iomanip>
-#include <cstdint>
 
-namespace {   //½öµ±Ç°ÎÄ¼şÊ¹ÓÃµÄµÄ¸¨Öúº¯Êı£¬¶¨ÒåÔÚÄäÃûÃüÃû¿Õ¼ä·ÀÖ¹ÖØÃû
-	std::string GenerateSessionId() {                                       //Éú³É¹Ì¶¨32Î»Ê®Áù½øÖÆµÄSessionId»á»°Æ¾Ö¤
-
-		thread_local std::random_device rd;                                 // thread_local£ºÃ¿¸öÏß³Ìµ¥¶ÀÊµÀı£¬±ÜÃâ¶àÏß³Ì¾ºÕùÍ¬Ò»¸öËæ»ú·¢ÉúÆ÷
-
-		thread_local std::mt19937 gen(rd());
-
-		thread_local std::uniform_int_distribution<uint32_t> dist(0, 0xFFFFFFFF); // ¾ùÔÈ·Ö²¼£¬Éú³ÉÍêÕû32Î»ÎŞ·ûºÅÕûÊı [0, 0xFFFFFFFF]
-		std::ostringstream oss;
-		oss << std::hex;                                                    // Ê®Áù½øÖÆÊäÈëµ½»º³åÇø
-		oss << std::setfill('0');                                           // ²»×ã¿í¶ÈÊ±Ê¹ÓÃ0²¹Æë
-
-		for (int i = 0; i < 4; ++i) {
-			oss << std::setw(8) << dist(gen);                              // Ñ­»·4´Î£ºÃ¿´ÎÉú³É4×Ö½Ú(uint32_t)£¬ºÏ¼Æ 4*4 = 16×Ö½ÚËæ»úÊı¾İ
-		}
-		return oss.str();                                                  //È¡³ö»º³åÇøÈ«²¿×Ö·û£¬´ò°ü³É std::string ·µ»Ø
-	}
-}
-
+#include <utility>
+#include "common/random_id.h"
 
 namespace chatroom::user {
 
-	//ÏÔÊ½¹¹Ôìº¯Êı
-	AuthServiceImpl::AuthServiceImpl(std::shared_ptr<storage::UserMemoryStore> store) :user_store(std::move(store)) {}
+AuthServiceImpl::AuthServiceImpl(std::shared_ptr<storage::UserMemoryStore> store,
+                                 SessionEnded onSessionEnded, Now now)
+    : user_store(std::move(store)), onSessionEnded_(std::move(onSessionEnded)), now_(std::move(now)) {}
 
-	// 1)´úÂëÂß¼­£ºĞ£ÑéêÇ³ÆÊÇ·ñÖØ¸´²¢Íê³É×¢²á£¬½«ĞÂÓÃ»§Ğ´ÈëÄÚ´æÓÃ»§´æ´¢¡£
-	// 2)·µ»ØÖµÀàĞÍ£ºbool£¬Ô­ÒòÊÇ×¢²á½×¶ÎÖ»ĞèÒª±í´ï³É¹¦»òÊ§°Ü£¬¹©×¢²á HTTP ½Ó¿Úµ÷ÓÃ¡£
-	// 3)²ÎÊıÀàĞÍ£ºconst std::string& nickname Óë const std::string& password£¬Ô­ÒòÊÇ×¢²áÒµÎñ×îĞ¡ÊäÈë¾ÍÊÇÎ¨Ò»êÇ³ÆºÍÓÃ»§×ÔÉèÃÜÂë£¬²ÎÊıÖ±½Ó¶ÔÓ¦×¢²áÒªÇó
-	bool AuthServiceImpl::Register(const std::string& nickname, const std::string& password) {
-		chatroom::models::User user;
-		user.nickname = nickname, user.password = password;                            //¹¹ÔìÓÃ»§¶ÔÏó£¬±£´æêÇ³ÆÓëÃÜÂë
-		return user_store->SaveUser(user);                                             //µ÷ÓÃ´æ´¢½Ó¿Ú±£´æÓÃ»§(½Ó¿ÚÄÚ²¿ÒÑ¾­ÊµÏÖ²éÖØ)
-	}
-
-	// 1)´úÂëÂß¼­£ºĞ£ÑéêÇ³ÆºÍÃÜÂë£¬µÇÂ¼³É¹¦ºóÉú³É sessionId ²¢½¨Á¢µÇÂ¼Ì¬Ó³Éä¡£
-	//   ×¢ÒâÒÑ¾­µÇÂ¼µÄÓÃ»§²»ÄÜÔÙ´ÎµÇÂ¼
-	// 2)·µ»ØÖµÀàĞÍ£ºstd::optional<std::string>£¬Ô­ÒòÊÇµÇÂ¼¿ÉÄÜ³É¹¦²¢·µ»Ø sessionId£¬Ò²¿ÉÄÜÊ§°ÜÎŞ½á¹û£¬¹©µÇÂ¼ HTTP ½Ó¿ÚºÍ WebSocket ½¨Á¬Á÷³Ìµ÷ÓÃ¡£
-	// 3)²ÎÊıÀàĞÍ£ºconst std::string& nickname Óë const std::string& password£¬Ô­ÒòÊÇµÇÂ¼Æ¾Ö¤¾ÍÊÇêÇ³ÆºÍÃÜÂë£¬²ÎÊıÖ±½Ó¶ÔÓ¦µÇÂ¼ÒªÇó¡£
-	std::optional<std::string> AuthServiceImpl::Login(const std::string& nickname, const std::string& password) {
-
-		std::lock_guard<std::mutex> lock(session_mtx);                               //¶ÔÁ½¸öÓ³Éä±íÉÏËø(·ÀÖ¹Í¬Ò»ÕËºÅÍ¬Ê±ÖØ¸´µÇÂ¼
-
-		auto opt = user_store->FindUserByNickname(nickname);
-		if (!opt.has_value()) {                                                       //²»´æÔÚ¸ÃêÇ³ÆÓÃ»§
-			return std::nullopt;
-		}
-		const auto& user = opt.value();
-		if (user.password != password){                                             //ÃÜÂë´íÎó
-			return std::nullopt;
-		}
-
-		auto it = nickname_map.find(nickname);
-		if (it != nickname_map.end()) {                                              //¸ÃÓÃ»§ÒÑ¾­µÇÂ¼
-			return std::nullopt;
-		}
-
-		std::string sid;
-		do {                                                                         // Ñ­»·Éú³ÉĞÂsessionId£¬±ÜÃâÓëÒÑÓĞsessionIdÖØ¸´
-			sid = GenerateSessionId();
-		} while (session_map.find(sid)!=session_map.end());
-
-		session_map.emplace( sid ,nickname );
-		nickname_map.emplace( nickname, sid );                                      //ÏòÁ½¸öÓ³Éä±íÖĞ¼ÓÈëĞÂµÇÂ¼ÓÃ»§
-
-		return sid;                                                                  //·µ»ØsessionId
-	}
-
-	// 1)´úÂëÂß¼­£º¸ù¾İ sessionId ×¢Ïúµ±Ç°µÇÂ¼Ì¬£¬²¢´¥·¢Ïà¹ØÔÚÏß×´Ì¬ºÍË½ÁÄ»á»°ÇåÀí¡£
-	// 2)·µ»ØÖµÀàĞÍ£ºbool£¬Ô­ÒòÊÇµÇ³öÖ»ĞèÒª±í´ï¸Ã sessionId ÊÇ·ñÓĞĞ§²¢ÊÇ·ñ³É¹¦ÇåÀí£¬¹©µÇ³ö HTTP ½Ó¿Úµ÷ÓÃ¡£
-	// 3)²ÎÊıÀàĞÍ£ºconst std::string& sessionId£¬Ô­ÒòÊÇ¿Í»§¶ËµÇÂ¼ºóÖ»³ÖÓĞ sessionId£¬²ÎÊıÖ±½Ó¶ÔÓ¦µÇÂ¼Ì¬Éè¼Æ¡£
-	bool AuthServiceImpl::Logout(const std::string& sessionId) {
-
-		std::lock_guard<std::mutex> lock(session_mtx);                               //¶ÁÈ¡Ö®Ç°¶ÔÓ³Éä±íÉÏËø
-
-		auto it = session_map.find(sessionId);
-		if (it == session_map.end()) {                                               //ÎŞĞ§µÄsessionId
-			return false;
-		}
-
-		std::string nickname = it->second;
-
-		session_map.erase(it);                                                      //É¾³ısessionId->nicknameÓ³Éä¼ÇÂ¼                           
-
-		it = nickname_map.find(nickname);
-		if (it != nickname_map.end()) {
-			nickname_map.erase(it);                                                 //É¾³ınickname->sessionIdÓ³Éä¼ÇÂ¼
-		}
-
-		return true;
-	}
-
-
-	// 1)´úÂëÂß¼­£º¸ù¾İ sessionId ½âÎöµ±Ç°µÇÂ¼ÓÃ»§êÇ³Æ£¬ÓÃÓÚÊÜ±£»¤ HTTP ½Ó¿ÚºÍ WebSocket Á¬½Ó¼øÈ¨¡£
-	// 2)·µ»ØÖµÀàĞÍ£ºstd::optional<std::string>£¬Ô­ÒòÊÇ sessionId ¿ÉÄÜÓĞĞ§Ò²¿ÉÄÜÊ§Ğ§£¬¹©ÁÄÌìÄ£¿éºÍ WebSocket Ä£¿éµ÷ÓÃ¡£
-	// 3)²ÎÊıÀàĞÍ£ºconst std::string& sessionId£¬Ô­ÒòÊÇ¸ÃÖµÊÇÏµÍ³Î¨Ò»µÇÂ¼Ì¬Æ¾Ö¤£¬²ÎÊıÖ±½Ó¶ÔÓ¦¼øÈ¨Âß¼­¡£
-	std::optional<std::string> AuthServiceImpl::ValidateSession(const std::string& sessionId) const {
-
-		std::lock_guard<std::mutex> lock(session_mtx);                               //¶ÁÈ¡Ö®Ç°¶ÔÓ³Éä±íÉÏËø
-
-		auto it = session_map.find(sessionId);
-		if (it == session_map.end()) {                                               //ÎŞĞ§µÄsessionId
-			return std::nullopt;
-		}
-
-		return  it->second;
-	}
+// 1)ä»£ç é€»è¾‘ï¼šå‘å­˜å‚¨æ³¨å†Œå”¯ä¸€æ˜µç§°åŠå¯†ç ï¼Œæ²¿ç”¨ç°æœ‰è´¦å·æ•°æ®æ ¼å¼ã€‚
+// 2)è¿”å›å€¼ç±»å‹ï¼šboolï¼Œä¾›æ³¨å†Œæ§åˆ¶å™¨åˆ¤æ–­æ˜¯å¦æˆåŠŸã€‚
+// 3)å‚æ•°ç±»å‹ï¼šæ˜µç§°å’Œå¯†ç å­—ç¬¦ä¸²å¯¹åº”å®¢æˆ·ç«¯æ³¨å†Œå­—æ®µã€‚
+bool AuthServiceImpl::Register(const std::string& nickname, const std::string& password) {
+    chatroom::models::User user;
+    user.nickname = nickname;
+    user.password = password;
+    return user_store->SaveUser(user);
 }
+
+bool AuthServiceImpl::IsExpired(const Session& session) const {
+    if (session.connection != nullptr) return false;
+    // ç™»å½•åé¢„ç•™ 15 ç§’å»ºç«‹é¦–ä¸ªè¿æ¥ï¼›å·²è¿è¿‡çš„ä¼šè¯é¢„ç•™ 5 åˆ†é’Ÿä¾›åˆ·æ–°/æ–­ç½‘/åˆ‡åå°é‡è¿ã€‚
+    const auto grace = session.wasConnected ? std::chrono::seconds(300) : std::chrono::seconds(15);
+    return now_() - session.disconnectedAt >= grace;
+}
+
+// è°ƒç”¨æ–¹æŒæœ‰ session_mtxã€‚æ¸…ç†å¤±è´¥æ—¶ä¿ç•™æ˜ å°„ä¾›ä¸‹æ¬¡é‡è¯•ï¼Œé¿å…åˆ é™¤æ–°ä¼šè¯çš„ç§èŠã€‚
+void AuthServiceImpl::RemoveSession(const std::string& sessionId) {
+    const auto found = session_map.find(sessionId);
+    if (found == session_map.end()) return;
+    const std::string nickname = found->second.nickname;
+    if (onSessionEnded_) onSessionEnded_(nickname);
+    nickname_map.erase(nickname);
+    session_map.erase(found);
+}
+
+// 1)ä»£ç é€»è¾‘ï¼šå…ˆæ ¡éªŒå¯†ç ï¼›æ‹’ç»ä»åœ¨çº¿çš„é‡å¤ç™»å½•ï¼Œç¦»çº¿ç”¨æˆ·å¯ç«‹å³é‡æ–°ç™»å½•å¹¶åºŸå¼ƒæ—§ä¼šè¯ã€‚
+// 2)è¿”å›å€¼ç±»å‹ï¼šstd::optional<std::string>ï¼Œä¾› HTTP æ§åˆ¶å™¨è¿”å›æ–°ä¼šè¯æˆ–ç™»å½•å¤±è´¥ã€‚
+// 3)å‚æ•°ç±»å‹ï¼šæ˜µç§°å’Œå¯†ç å¿…é¡»æ¥è‡ªæœ¬æ¬¡ç™»å½•è¯·æ±‚ï¼Œæ–­è¿ä¸ç»•è¿‡å¯†ç æ ¡éªŒã€‚
+std::optional<std::string> AuthServiceImpl::Login(const std::string& nickname, const std::string& password) {
+    std::lock_guard<std::mutex> lock(session_mtx);
+    const auto user = user_store->FindUserByNickname(nickname);
+    if (!user || user->password != password) return std::nullopt;
+
+    const auto existing = nickname_map.find(nickname);
+    if (existing != nickname_map.end()) {
+        const auto& session = session_map.at(existing->second);
+        if (session.connection != nullptr || (!session.wasConnected && !IsExpired(session))) {
+            return std::nullopt;
+        }
+        const std::string previousId = existing->second;
+        RemoveSession(previousId);
+    }
+    std::string sessionId;
+    do { sessionId = common::GenerateRandomHexId(); } while (session_map.count(sessionId));
+    session_map.emplace(sessionId, Session{nickname, nullptr, false, now_()});
+    nickname_map.emplace(nickname, sessionId);
+    return sessionId;
+}
+
+// 1)ä»£ç é€»è¾‘ï¼šæ˜¾å¼é€€å‡ºæ—¶ç«‹å³æ’¤é”€å‡­æ®å¹¶ç»Ÿä¸€æ¸…ç†ç§èŠã€‚
+// 2)è¿”å›å€¼ç±»å‹ï¼šboolï¼Œä¾›é€€å‡ºæ¥å£è¿”å›æˆåŠŸæˆ–æ— æ•ˆä¼šè¯ã€‚
+// 3)å‚æ•°ç±»å‹ï¼šsessionId å”¯ä¸€æ ‡è¯†è¦é€€å‡ºçš„ä¼šè¯ï¼Œä¸èƒ½æŒ‰æ˜µç§°è¯¯åˆ æ–°ç™»å½•ã€‚
+bool AuthServiceImpl::Logout(const std::string& sessionId) {
+    std::lock_guard<std::mutex> lock(session_mtx);
+    if (!session_map.count(sessionId)) return false;
+    RemoveSession(sessionId);
+    return true;
+}
+
+// 1)ä»£ç é€»è¾‘ï¼šéªŒè¯ä¼šè¯å­˜åœ¨ä¸”æœªè¶…è¿‡æ–­è¿å®½é™æœŸï¼Œä¸å›  HTTP è¯·æ±‚å»¶é•¿æ–­è¿æœŸé™ã€‚
+// 2)è¿”å›å€¼ç±»å‹ï¼šstd::optional<std::string>ï¼Œä¾› HTTP å’Œ WebSocket æ¡æ‰‹é‰´æƒã€‚
+// 3)å‚æ•°ç±»å‹ï¼šsessionId ä¸ºå®¢æˆ·ç«¯æŒæœ‰çš„ç™»å½•å‡­æ®ã€‚
+std::optional<std::string> AuthServiceImpl::ValidateSession(const std::string& sessionId) const {
+    std::lock_guard<std::mutex> lock(session_mtx);
+    const auto found = session_map.find(sessionId);
+    if (found == session_map.end() || IsExpired(found->second)) return std::nullopt;
+    return found->second.nickname;
+}
+
+std::optional<std::string> AuthServiceImpl::AttachConnection(const std::string& sessionId, const void* connection) {
+    std::lock_guard<std::mutex> lock(session_mtx);
+    const auto found = session_map.find(sessionId);
+    if (!connection || found == session_map.end() || IsExpired(found->second)) return std::nullopt;
+    found->second.connection = connection;
+    found->second.wasConnected = true;
+    return found->second.nickname;
+}
+
+void AuthServiceImpl::DetachConnection(const std::string& sessionId, const void* connection) {
+    std::lock_guard<std::mutex> lock(session_mtx);
+    const auto found = session_map.find(sessionId);
+    if (found == session_map.end() || !connection || found->second.connection != connection) return;
+    found->second.connection = nullptr;
+    found->second.disconnectedAt = now_();
+}
+
+bool AuthServiceImpl::ValidateConnection(const std::string& sessionId, const void* connection) const {
+    std::lock_guard<std::mutex> lock(session_mtx);
+    const auto found = session_map.find(sessionId);
+    return connection && found != session_map.end() && found->second.connection == connection;
+}
+
+void AuthServiceImpl::ExpireDisconnectedSessions() {
+    std::lock_guard<std::mutex> lock(session_mtx);
+    for (auto it = session_map.begin(); it != session_map.end();) {
+        if (IsExpired(it->second)) {
+            const std::string id = it->first;
+            ++it;
+            RemoveSession(id);
+        } else ++it;
+    }
+}
+
+}  // namespace chatroom::user

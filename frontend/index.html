@@ -2,6 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>聊天室</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
@@ -12,7 +13,13 @@
 
         <!-- 顶部标题 -->
         <div class="chat-header">
-            长庚的聊天室
+            <span>长庚的聊天室</span>
+            <div class="header-actions">
+                <span id="connectionStatus" class="conn-status conn-connecting">连接中…</span>
+                <span id="onlineCount" class="online-count"></span>
+                <span id="currentNickname"></span>
+                <button id="logoutButton" type="button">退出登录</button>
+            </div>
         </div>
 
         <!-- 聊天主体 -->
@@ -24,15 +31,16 @@
                 <h3>聊天</h3>
 
                 <!-- 公共大厅 -->
-                <div class="user lobby" data-type="lobby">
-                    💬 公共大厅
+                <div class="user lobby active" data-type="lobby">
+                    <span class="user-name">💬 公共大厅</span>
+                    <span class="badge" id="lobbyBadge"></span>
                 </div>
 
                 <h3>在线用户</h3>
 
                 <!-- 在线用户 -->
                 <div id="userList">
-                    <!-- 以后由后端动态生成 -->
+                    <!-- 由后端在线列表动态生成 -->
                 </div>
 
             </div>
@@ -51,7 +59,7 @@
 
                     <textarea
                         id="messageInput"
-                        placeholder="请输入消息"
+                        placeholder="请输入消息，Enter 发送，Shift+Enter 换行"
                         rows="1"
                     ></textarea>
 
@@ -67,6 +75,7 @@
 
     </div>
 
+    <script src="js/common.js"></script>
     <script src="js/main.js"></script>
 
 </body>

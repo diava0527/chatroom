@@ -16,6 +16,7 @@ struct ChatProtocol {
     static constexpr std::string_view kPrivateHistoryPull = "private.history.pull";
     static constexpr std::string_view kPrivateHistoryResponse = "private.history.response";
     static constexpr std::string_view kOnlineUsersChanged = "online.users.changed";
+    static constexpr std::string_view kError = "chat.error";
 };
 
 }  // namespace chatroom::chat

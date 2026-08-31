@@ -4,11 +4,11 @@
 
 namespace chatroom::framework {
 
-void CrowRouterRegistry::AddRegistrar(RouteRegistrar&& registrar) {
+void CrowRouterRegistry::AddRegistrar(RouteRegistrar registrar) {
     registrars_.push_back(std::move(registrar));
 }
 
-void CrowRouterRegistry::RegisterAll(crow::SimpleApp& app) {
+void CrowRouterRegistry::RegisterAll(ChatroomApp& app) {
     for (auto& registrar : registrars_) {
         registrar(app);
     }

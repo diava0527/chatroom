@@ -32,6 +32,9 @@ public:
     // 3)参数类型：const std::string& privateSessionId，原因是私聊历史边界由当前窗口会话唯一确定，参数直接对应私聊记录存储方式。
     virtual std::vector<chatroom::models::Message> PullPrivateHistory(const std::string& privateSessionId) const = 0;
 
+    virtual bool IsParticipant(const std::string& privateSessionId,
+                               const std::string& nickname) const = 0;
+
     // 1)代码逻辑：在用户退出登录时清空与该用户有关的全部当前私聊窗口会话和消息历史。
     // 2)返回值类型：void，原因是该接口只负责登出后的清理动作，不需要返回业务对象，供登出流程调用。
     // 3)参数类型：const std::string& nickname，原因是清理范围围绕指定用户展开，参数直接对应“退出登录后清空和用户有关的私聊窗口”要求。

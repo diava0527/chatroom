@@ -11,7 +11,8 @@ crow::response JsonResponseBuilder::BuildHttpJson(
     responseBody["message"] = message;
 
     if (data.has_value()) {
-        if (auto parsed = crow::json::load(*data); parsed) {
+        auto parsed = crow::json::load(*data);
+        if (parsed) {
             responseBody["data"] = std::move(parsed);
         } else {
             responseBody["data"] = *data;
@@ -23,7 +24,7 @@ crow::response JsonResponseBuilder::BuildHttpJson(
     crow::response response;
     response.code = 200;
     response.set_header("Content-Type", "application/json; charset=utf-8");
-    response.body = crow::json::dump(responseBody);
+    response.body = responseBody.dump();
     return response;
 }
 
