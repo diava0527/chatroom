@@ -1,118 +1,433 @@
-# 网络聊天室后端架构
+# 网络聊天室
 
-本项目是基于 `crow_all.h` 与 Boost 的浏览器聊天室：Crow 同时提供 HTTP 接口、WebSocket 实时通信和前端静态页面，业务数据持久化在 MySQL。
+基于 **C++17 + Crow + WebSocket + MySQL** 的模块化网络聊天室。
 
-## 主要功能
+一个 Crow 进程同时承担三件事：HTTP 业务接口、WebSocket 实时通信、前端静态页面托管。页面和接口天然同源，只需暴露一个端口；对外部署时由 Nginx 终止 TLS 并反向代理。业务数据（用户、大厅消息、私聊会话与消息）持久化在 MySQL，登录态与在线状态保存在进程内存。
 
-- 账号体系改为昵称体系，昵称唯一且不可重复
-- 用户使用昵称和密码注册
-- 用户使用昵称和密码登录
-- 登录成功后返回 `sessionId`
-- 用户进入聊天大厅后可以发送大厅消息
-- 大厅历史只显示用户进入大厅之后的消息
-- 用户可以查看在线用户并主动创建私聊窗口
-- 私聊历史只记录从当前私聊窗口开始后的消息
-- 用户退出登录后，清空和该用户有关的私聊窗口
+![登录与注册](docs/images/placeholder.svg)
 
-## 实现方式
+## 界面预览
 
-- 后端通信采用 `HTTP + WebSocket` 混合架构
-- 注册、登录、登出、创建私聊窗口、获取在线用户使用 HTTP
-- 大厅聊天、私聊消息、历史拉取、在线状态通知使用 WebSocket
-- 私聊记录使用 `map` 管理当前私聊窗口会话
-- 用户、大厅消息、私聊窗口和私聊消息使用 MySQL Store
-- 登录 session、在线状态和 WebSocket 连接保留在进程内存中
+> 当前是占位图。录制自己的运行效果后，把文件放进 `docs/images/` 并替换下面对应路径即可。
 
-## MySQL 本地接入
+<!-- GIF 演示位：建议 10~20 秒，覆盖 登录 → 进入大厅 → 发送消息 → 私聊 -->
+<!-- 替换为：![演示](docs/images/demo.gif) -->
 
-项目通过 MySQL 官方 C API 连接数据库，连接参数只从环境变量读取，不把数据库密码写进源码。
+| 聊天大厅 | 在线用户 | 私聊窗口 |
+| --- | --- | --- |
+| ![聊天大厅](docs/images/placeholder.svg) | ![在线用户](docs/images/placeholder.svg) | ![私聊窗口](docs/images/placeholder.svg) |
 
-1. 使用管理员 PowerShell 启动服务：
+建议文件名：`login.png`、`chat.png`、`online-users.png`、`private-chat.png`、`demo.gif`。
+
+## 功能
+
+### 已实现
+
+- **昵称账号体系**：昵称唯一，注册 / 登录 / 登出，登录成功返回 `sessionId`
+- **混合通信**：HTTP 负责注册、登录、登出、在线列表、创建私聊；WebSocket 负责大厅消息、私聊消息、历史拉取、在线状态推送
+- **大厅聊天**：进入大厅后可发言，历史只显示「本次进入大厅之后」的消息
+- **在线用户**：实时列表与变更推送，点击用户即可发起私聊
+- **私聊**：创建私聊窗口、双向收发、历史拉取；退出登录时清理该用户相关的私聊窗口
+- **会话生命周期**：已连接的会话断线后保留 5 分钟重连宽限；登录后 15 秒内未建立 WebSocket 则失效；服务端每 15 秒回收一次并同步清理私聊；同一昵称在线时拒绝重复登录
+- **持久化**：用户、大厅消息、私聊窗口与私聊消息写入 MySQL，首次启动自动建表
+- **单端口部署**：后端直接托管 `frontend/`，无需额外静态服务器，也不需要 CORS
+- **前端交互**：断线自动重连（指数退避）、未读徽章、多标签页会话同步、离开页面静默断开
+
+### 尚未实现 / 已知限制
+
+- **密码是明文存储和明文比对**（`auth_service_impl.cpp`），公网部署前应改为哈希（如 bcrypt/argon2）
+- **单实例**：登录态、在线状态、WebSocket 连接都在进程内存，无法多实例横向扩展
+- **无内置 TLS**：HTTP 与 WebSocket 本身不加密，需要 Nginx 等反向代理补上
+- **端口写死**：`kServerPort = 8080`、`kBindAddress = 127.0.0.1` 是编译期常量，暂不支持环境变量配置
+- **不支持富媒体**：只能发文本，没有图片 / 文件 / 语音消息
+- **无消息治理**：没有撤回、删除、已读回执、编辑
+- **无社交关系**：没有好友列表、黑名单、群聊，私聊对象必须是当前在线用户
+- **无管理能力**：没有管理员后台、封禁、限流、防刷
+- **仅 Windows 实测**：CMake 里有 Linux 分支（`pkg-config mysqlclient`），但未在 Linux 上验证过
+
+## 技术栈
+
+| 层次 | 选型 |
+| --- | --- |
+| 语言 | C++17 |
+| Web 框架 | Crow（`crow_all.h`，随仓库提供） |
+| 网络库 | Boost.Asio（Boost 1.78 头文件） |
+| 实时通信 | WebSocket（`/ws/chat`） |
+| 数据存储 | MySQL 8.0（官方 C API） |
+| 前端 | 原生 HTML / CSS / JavaScript，无构建步骤 |
+| 构建 | CMake + Visual Studio 2022 |
+| 测试 | CTest + Node.js 集成脚本 |
+
+## 架构
+
+![后端分层架构](docs/images/architecture.svg)
+
+请求链路：`浏览器 ──HTTP / WebSocket──▶ Crow 进程 :8080 ──▶ MySQL`。前端页面由同一个 Crow 进程托管，session、在线状态与 WebSocket 连接保存在进程内存。
+
+> 图为 `docs/images/architecture.svg`，可直接编辑该文件调整配色或模块名。
+
+| 通道 | 路径 | 用途 |
+| --- | --- | --- |
+| HTTP POST | `/api/v1/auth/register` | 注册 |
+| HTTP POST | `/api/v1/auth/login` | 登录，返回 `sessionId` |
+| HTTP POST | `/api/v1/auth/logout` | 登出 |
+| HTTP GET | `/api/v1/users/online` | 在线用户列表 |
+| HTTP POST | `/api/v1/private-chat/session` | 创建私聊窗口 |
+| HTTP GET | `/api/v1/health` | 健康检查（含数据库连通性） |
+| WebSocket | `/ws/chat?sessionId=...` | 大厅 / 私聊消息与历史 |
+| HTTP GET | `/`、`/<path>` | 前端页面与静态资源 |
+
+HTTP 鉴权走请求头 `X-Session-Id`，WebSocket 走握手参数 `sessionId`。
+
+WebSocket 事件：`lobby.enter`、`lobby.message.send`、`lobby.message.receive`、`lobby.history.pull`、`lobby.history.response`、`private.message.send`、`private.message.receive`、`private.history.pull`、`private.history.response`、`online.users.changed`、`chat.error`。
+
+## 目录结构
+
+```
+chatroom/
+├─ src/main.cpp                 程序入口：依赖装配、路由注册、启动
+├─ include/
+│  ├─ framework/                Crow 启动装配、路由注册、统一响应格式
+│  ├─ models/                   用户、消息、大厅会话、私聊会话模型
+│  ├─ user/                     注册、登录、登出、鉴权
+│  ├─ chat/                     大厅、私聊、在线用户、聊天协议
+│  ├─ websocket/                连接管理、消息分发、连接生命周期
+│  ├─ storage/                  存储接口；mysql/ 下为 MySQL 实现
+│  └─ common/                   公共常量与随机 ID
+├─ frontend/                    静态前端（HTML / CSS / JS）
+├─ tests/                       会话生命周期测试 + WebSocket 集成测试
+├─ docs/images/                 README 截图与架构图
+├─ crow_all.h                   内置的 Crow 头文件
+├─ third_party/boost_1_78_0/    Boost 头文件（未入库，需自行放置）
+├─ CMakeLists.txt
+├─ build.ps1                    一键构建
+├─ start-backend.ps1            一键启动（读取 .env）
+├─ .env.example                 配置模板
+└─ README.md
+```
+
+## 快速开始
+
+整个流程只有两件事：**初始化**（只做一次）和**启动**（每次都用）。
+
+| 场景 | 要执行的命令 | 说明 |
+| --- | --- | --- |
+| 第一次拿到项目 | `./build.ps1` | 把源码编译成 exe，**不启动服务** |
+| 每次要用 | `./start-backend.ps1` | 启动服务，然后浏览器访问 |
+| 改了代码 | `./build.ps1` → 停掉旧进程 → `./start-backend.ps1` | 增量编译通常很快 |
+
+所以最省事的路径是：**装 MySQL + 建库账号**（第 0、1 步）→ **`./build.ps1`**（第 3 步，只做一次）→ **`./start-backend.ps1`**（第 4 步）。数据库密码在启动时输入即可，`.env` 是可选的（第 2 步），只用来省掉每次输入。
+
+### 最短路径：已有 MySQL 的话，3 条命令跑起来
+
+1. 用资源管理器打开项目文件夹，**在顶部地址栏输入 `pwsh` 回车**（窗口会直接定位到项目目录）
+2. 执行 `./build.ps1` —— 第一次编译，等它跑完
+3. 执行 `./start-backend.ps1` —— 按提示输入数据库密码
+4. 浏览器打开 <http://localhost:8080/>
+
+下面「先认识 PowerShell」一节解释这几条命令在干什么，遇到报错可以对照后面的常见问题。
+
+### 环境依赖
+
+| 依赖 | 版本 | 说明 |
+| --- | --- | --- |
+| Windows | 10 / 11 x64 | 当前唯一验证过的平台 |
+| Visual Studio 2022 | 含「使用 C++ 的桌面开发」 | 提供 MSVC 与 Windows SDK |
+| CMake | ≥ 3.16 | 需要加入 PATH |
+| MySQL Server 8.0 | 开发时用 8.0.45 | 需要 `include/mysql.h`、`lib/libmysql.lib`、`libmysql.dll`、`libssl-3-x64.dll`、`libcrypto-3-x64.dll` |
+| Boost | 1.78 | 解压到 `third_party/boost_1_78_0`，该目录不入库 |
+| Crow | — | 仓库根目录的 `crow_all.h` 已内置，无需额外安装 |
+| Node.js | 可选 | 仅用于 WebSocket 集成测试 |
+
+Boost 1.78 下载地址：<https://archives.boost.io/release/1.78.0/source/boost_1_78_0.zip>，解压后目录结构应为 `third_party/boost_1_78_0/boost/version.hpp`。
+
+MySQL 默认安装在 `C:/Program Files/MySQL/MySQL Server 8.0`；装在别处时，配置时加 `-DMYSQL_ROOT_DIR="你的安装目录"`。
+
+### 先认识 PowerShell（新手必读，老手跳过）
+
+> **已经用过 PowerShell、平时在终端里敲命令的人，这一整节可以直接跳过**，从第 0 步开始。
+>
+> 只有遇到下面任意一种情况才需要展开：
+> - 不确定自己打开的是 cmd 还是 PowerShell
+> - 执行 `./build.ps1` 报“不是内部或外部命令”
+> - 报错“无法加载文件……因为在此系统上禁止运行脚本”
+
+这一节讲的是**在 Windows 上怎么运行 `.ps1` 脚本**这件通用的事，和聊天室功能无关，只解决三个问题：用哪个窗口、怎么执行、被系统拦住怎么办。
+
+<details>
+<summary><b>展开查看：PowerShell 使用说明</b></summary>
+
+**① 用哪个窗口**
+
+看提示符即可判断：
+
+| 窗口 | 提示符 | 能否执行本项目脚本 |
+| --- | --- | --- |
+| PowerShell | `PS C:\Users\31586\Desktop\网络聊天室\chatroom>` | ✅ |
+| cmd | `C:\Users\31586\Desktop\网络聊天室\chatroom>` | ❌ 会报“不是内部或外部命令” |
+
+**② 怎么打开 PowerShell（任选一种）**
+
+1. **最快**：在资源管理器里打开项目文件夹，点一下窗口顶部的地址栏（显示路径的那一栏），输入 `pwsh` 回车。窗口会直接定位在项目目录，不用再 `cd`。
+   - 提示找不到 `pwsh`，就输入 `powershell`，打开系统自带的 Windows PowerShell（同样能用）。
+2. 开始菜单搜索 `PowerShell 7`（或 `PowerShell`）打开，再切换目录：
 
    ```powershell
-   Start-Service MySQL80
+   cd "C:\Users\31586\Desktop\网络聊天室\chatroom"
    ```
 
-2. 使用 MySQL 管理员账号创建项目数据库和最小权限账号（请替换示例密码）：
+3. 在 VS Code 里按 <kbd>Ctrl</kbd> + <kbd>`</kbd> 打开终端，默认就是 PowerShell。
 
-   ```sql
-   CREATE DATABASE IF NOT EXISTS chatroom
-     CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-   CREATE USER IF NOT EXISTS 'chat_app'@'127.0.0.1'
-     IDENTIFIED BY 'replace_with_a_strong_password';
-   GRANT ALL PRIVILEGES ON chatroom.* TO 'chat_app'@'127.0.0.1';
-   ```
+**③ 怎么执行脚本（通用写法，真正的命令在第 3、4 步）**
 
-3. 复制环境变量模板并填入真实密码（`.env` 已被 `.gitignore` 忽略，不会提交）：
+在 PowerShell 里运行脚本的写法就是 `./脚本名.ps1`，回车即执行。本项目的两条实际命令分别是第 3 步的 `./build.ps1` 和第 4 步的 `./start-backend.ps1`；这里只说明通用规则：
 
-   ```powershell
-   Copy-Item .env.example .env
-   # 编辑 .env，把 DB_PASSWORD 改成 chat_app 的真实密码
-   ```
+- 粘贴后要按 **回车** 才执行；<kbd>Ctrl</kbd> + <kbd>V</kbd> 或鼠标右键都能粘贴。
+- `./build.ps1` 和 `.\build.ps1` 等价，两种写法都行（Windows PowerShell 里用反斜杠更稳）。
+- 脚本跑起来后窗口会被日志占住，这是正常的，不是卡死；**<kbd>Ctrl</kbd> + <kbd>C</kbd> 停止**。
+- 关掉窗口 = 程序停止。想让它一直跑，就别关这个窗口。
 
-4. 启动后端后访问 `http://127.0.0.1:8080/api/v1/health` 即可确认数据库连接状态。完整变量清单见 `.env.example`。
+**④ 被系统拦住了怎么办**
 
-程序首次启动时会在 `chatroom` 数据库中自动创建业务表，因此 `chat_app` 需要该数据库的建表和读写权限。
+提示“无法加载文件 … 因为在此系统上禁止运行脚本”属于 Windows 的脚本安全策略，不是项目问题。执行一次：
 
-## 启动聊天室
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+Get-ChildItem -Recurse -File | Unblock-File   # 仅 ZIP 解压的项目需要
+```
 
-1. 编译并启动（启动脚本会自动读取 `.env`，并选中 `out/build` 下最新编译的 exe）：
+细节见「常见问题」。
 
-   ```powershell
-   cmake -S . -B out/build/mysql-vs -G "Visual Studio 17 2022" -A x64
-   cmake --build out/build/mysql-vs --config RelWithDebInfo --target browser_chatroom_architecture
-   ./start-backend.ps1
-   ```
+</details>
 
-   `.env` 里没写密码时，脚本会在终端提示输入，密码只存在于当前进程内存，不落盘。也可以手动 `-ExePath` 指定任意可执行文件。
+### 0. 安装 MySQL（已装可跳过）
 
-2. 浏览器访问 `http://localhost:8080/`，根路径会直接返回登录页。后端健康检查地址为 `http://127.0.0.1:8080/api/v1/health`。
+1. 从 <https://dev.mysql.com/downloads/installer/> 下载 `mysql-installer-community-8.0.x.msi`（选那个几百 MB 的离线安装包）。
+2. 运行安装器，Setup Type 选 **Developer Default**——它会一次装好服务端、命令行客户端和 Connector，最省事。
+3. 一路 Next 到 Execute，等组件装完。
+4. 到 **Accounts and Roles** 这一步会要求设置 **root 密码**，务必记下来，下一步建库要用。
+5. 其余保持默认：端口 `3306`、勾选注册 Windows 服务 `MySQL80`（开机自启）。
 
-前端页面由后端在同一个端口直接托管（默认读取项目根目录下的 `frontend/`），页面和接口同源，不再需要另开静态服务器，也不需要配置 CORS。前端目录不在默认位置时，在 `.env` 里设置 `FRONTEND_DIR`。
+装完后，开始菜单里会多出 **MySQL 8.0 Command Line Client**，后面就用它。
 
-Linux 服务器上用同一份 `.env` 即可，不需要额外脚本：
+### 1. 建数据库和账号（只做一次）
+
+> 这一步**不是建表**。5 张业务表由程序第一次启动时自动创建，不用你写。
+
+打开开始菜单里的 **MySQL 8.0 Command Line Client**，输入刚才设置的 root 密码（**输入时屏幕上不会显示任何字符**，输完直接回车）。
+
+然后逐条粘贴下面的 SQL。每条都要以 `;` 结尾，再按回车执行：
+
+```sql
+-- 1) 建一个叫 chatroom 的数据库
+CREATE DATABASE IF NOT EXISTS chatroom
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+-- 2) 建一个只给本项目用的账号（密码换成你自己的）
+CREATE USER IF NOT EXISTS 'chat_app'@'127.0.0.1'
+  IDENTIFIED BY '换成你自己的强密码';
+
+-- 3) 把 chatroom 库的权限授给这个账号
+GRANT ALL PRIVILEGES ON chatroom.* TO 'chat_app'@'127.0.0.1';
+
+-- 4) 让权限立即生效
+FLUSH PRIVILEGES;
+```
+
+每条都看到 `Query OK` 就是成功；可以执行 `SHOW DATABASES;` 确认列表里有 `chatroom`。
+
+三个容易卡住的地方：
+
+- `'chat_app'@'127.0.0.1'` 表示**只允许本机连接**。如果 MySQL 装在另一台机器上，要改成 `'chat_app'@'%'`。
+- 密码里不要有单引号；如果必须有，写成两个单引号 `''`。
+- 提示 `mysql 不是内部或外部命令` 说明 MySQL 的 `bin` 没进 PATH，用开始菜单那个客户端，或用完整路径：
+
+  ```powershell
+  & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -p
+  ```
+
+### 2.（可选）把密码写进 .env，省掉每次输入
+
+**这一步完全可以跳过。** 没有 `.env` 时，`./start-backend.ps1` 会在启动时提示你输入数据库密码：
+
+```text
+MySQL 密码（输入不显示，也不会写入文件）:********
+```
+
+输入时屏幕不显示字符，密码只存在于当前进程内存，进程退出就消失，**不会落到任何文件**。适合把项目发给别人、或不想在磁盘上留明文密码的场景。
+
+如果不想每次启动都输入，再做这一步：
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+```
+
+只需要改一行：
+
+```ini
+DB_PASSWORD=换成你在上一步给 chat_app 设置的密码
+```
+
+其余保持默认（`DB_NAME=chatroom`、`DB_USER=chat_app`、`DB_HOST=127.0.0.1`、`DB_PORT=3306`）。
+
+- `.env` 会被 `start-backend.ps1` 自动读取，之后启动就不用再输密码。
+- `.env` 已被 `.gitignore` 忽略，不会提交，可以放心写真实密码。
+- 密码含 `#`、`$`、空格等字符时，用双引号包起来：`DB_PASSWORD="a$b#c"`。
+- 写进文件意味着磁盘上有明文密码；多人共用电脑时不建议这么做。
+
+### 3. 首次初始化：构建（不启动服务）
+
+这一步**只做一件事：把源码编译成 exe**。它不连接数据库、不监听端口、不启动任何服务，所以跑完看不到聊天室界面是正常的。
+
+```powershell
+./build.ps1
+```
+
+> 还没打开 PowerShell？回到上面的「先认识 PowerShell」一节，最快的办法是在资源管理器地址栏输入 `pwsh` 回车。
+
+**只需要第一次做。** 之后：
+
+- 改了代码 → 再跑一次 `./build.ps1`（增量编译，通常几秒）
+- 改了 `CMakeLists.txt`、换了编译器或构建缓存损坏 → `./build.ps1 -Clean`
+
+常用参数：
+
+| 参数 | 作用 |
+| --- | --- |
+| 无参数 | 配置（首次自动执行）+ 编译，配置为 `RelWithDebInfo` |
+| `-WithTests` | 额外编译两个测试目标，供 `ctest` 使用 |
+| `-Clean` | 删掉 `out/build/app` 后重新配置 |
+| `-Config Debug` | 指定构建配置（`Debug` / `Release` / `RelWithDebInfo`） |
+
+等价的手动命令：
+
+```powershell
+cmake -S . -B out/build/app -G "Visual Studio 17 2022" -A x64
+cmake --build out/build/app --config RelWithDebInfo --target browser_chatroom_architecture
+```
+
+> `build.ps1` 永远不负责启动。**启动服务只有一条命令**，就是下一节的 `./start-backend.ps1`。
+
+### 4. 启动服务
+
+```powershell
+./start-backend.ps1
+```
+
+所有启动都统一走这个脚本。它会：
+
+1. 读取 `.env`（没有 `.env` 就提示输入数据库密码，不写文件）
+2. 补齐默认值（`DB_NAME=chatroom`、`DB_USER=chat_app` 等）
+3. 在 `out/build` 下挑**最新编译**的 `browser_chatroom_architecture.exe`
+4. 切到项目根目录再运行（前端目录是相对路径，必须在根目录启动）
+
+也可以 `-ExePath` 指定某个 exe。另外必须在 **PowerShell（pwsh）** 里执行，cmd 里请用 `pwsh -File start-backend.ps1`。
+
+### 5. 验证
+
+浏览器打开 <http://localhost:8080/>，根路径直接返回登录页。健康检查：
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8080/api/v1/health
+# { code: 0, message: "server started", data: { database: "connected" } }
+```
+
+第一次启动时，程序会自动在 `chatroom` 库里建好 `users`、`lobby_sessions`、`lobby_messages`、`private_chat_sessions`、`private_messages` 五张表；之后再启动只是跳过（`CREATE TABLE IF NOT EXISTS`）。所以看到 `database: "connected"` 就说明建表也完成了，可以用 `SHOW TABLES;` 检查。
+
+## 配置项
+
+`.env` 是**可选**的。通过 `start-backend.ps1` 启动时，脚本已经内置了 `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` 的默认值，密码可以留空由启动时提示输入——也就是说，**什么都不配也能跑起来**。
+
+配置来源优先级：**当前进程已有的环境变量 > `.env` > 脚本内置默认值**。
+
+| 变量 | 通过脚本启动时 | 直接运行 exe 时 | 说明 |
+| --- | --- | --- | --- |
+| `DB_HOST` | 可选，默认 `127.0.0.1` | 可选，默认 `127.0.0.1` | MySQL 地址 |
+| `DB_PORT` | 可选，默认 `3306` | 可选，默认 `3306` | MySQL 端口 |
+| `DB_NAME` | 可选，默认 `chatroom` | **必填** | 数据库名 |
+| `DB_USER` | 可选，默认 `chat_app` | **必填** | 数据库账号 |
+| `DB_PASSWORD` | 可选，留空则启动时提示输入 | **必填** | 数据库密码 |
+| `DB_CONNECT_TIMEOUT_SECONDS` | 可选，默认 `5` | 可选，默认 `5` | 连接超时秒数 |
+| `FRONTEND_DIR` | 可选，默认 `frontend` | 可选，默认 `frontend` | 前端目录，相对路径以进程工作目录为基准 |
+| `FRONTEND_ORIGIN` | 可选，默认 `http://localhost:8080` | 同左 | 仅在前后端不同源时才需要 |
+
+## 测试
+
+```powershell
+./build.ps1 -WithTests
+ctest --test-dir out/build/app -C RelWithDebInfo --output-on-failure
+node --check frontend/js/main.js
+```
+
+覆盖内容：会话生命周期（登录、断线宽限、重复登录、退出清理）与 WebSocket 端到端收发。
+
+## 部署到服务器
+
+后端只监听 `127.0.0.1:8080`，由 Nginx 提供 80/443：
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name chat.example.com;
+    ssl_certificate     /etc/letsencrypt/live/chat.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/chat.example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;    # WebSocket 必需
+        proxy_set_header Connection "upgrade";     # WebSocket 必需
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+Linux 上复用同一份 `.env` 启动：
 
 ```bash
 set -a; . ./.env; set +a
 ./browser_chatroom_architecture
 ```
 
-对外部署时由 Nginx 终止 TLS 并反向代理到 `127.0.0.1:8080`，WebSocket 需要透传 `Upgrade` 与 `Connection` 请求头。
+## 常见问题
 
-## 关闭网页与重新登录
+| 现象 | 原因 | 处理 |
+| --- | --- | --- |
+| `'.' 不是内部或外部命令` / `无法将“./build.ps1”项识别为 cmdlet` | 在 cmd 窗口里执行 `.ps1`，而不是 PowerShell | 先 `pwsh` 进 PowerShell，或用 `pwsh -File build.ps1`；参考「先认识 PowerShell」 |
+| `无法加载文件 ... 因为在此系统上禁止运行脚本` | 系统执行策略限制 | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`；ZIP 下载的再 `Get-ChildItem -Recurse -File \| Unblock-File` |
+| 输入数据库密码时屏幕上没有任何字符 | 密码输入本来就不回显 | 正常现象，输完直接回车 |
+| `mysql 不是内部或外部命令` | MySQL 的 `bin` 目录没加进 PATH | 用开始菜单的 **MySQL 8.0 Command Line Client**，或用完整路径调用 `mysql.exe` |
+| `Access denied for user 'chat_app'@'localhost'` | 密码填错了，或账号的 host 不是 `127.0.0.1` | 核对 `.env` 里的 `DB_PASSWORD`；确认建账号时写的 host 与连接地址一致 |
+| `Can't connect to MySQL server on '127.0.0.1'` | MySQL 服务没启动 | 管理员 PowerShell 执行 `Start-Service MySQL80` |
+| `Unknown collation: 'utf8mb4_0900_as_cs'` | MySQL 版本太低（5.7）或用了 MariaDB | 换成 MySQL 8.0 |
+| `Application startup failed: DB_NAME is required` | 没读到 `.env`，或变量为空 | 用 `./start-backend.ps1` 启动，或手动导出环境变量 |
+| 启动中抛 `handler already exists for ...` | 同一路径注册了两条路由 | 检查路由注册是否有重复 |
+| `/api/v1/health` 返回 503 | 数据库连不上 | 检查 MySQL 服务、账号密码、`DB_HOST` |
+| 页面 404 | 工作目录不是项目根目录，找不到 `frontend/` | 在项目根目录启动，或用 `FRONTEND_DIR` 指定绝对路径 |
+| `LNK1168 无法打开 ...exe 进行写入` | 后端还在运行，占用着 exe | 先停掉进程再编译 |
+| `LNK1104 无法打开 ws2_32.lib` | 在非 VS 开发者环境里用 Ninja 构建 | 用 `./build.ps1`（VS 生成器），或在 VS 里生成 |
+| 登录后马上掉线 | 登录后 15 秒内没建立 WebSocket | 检查浏览器网络与 `/ws/chat` 是否可达 |
+| 同一昵称登录被拒 | 该昵称仍有活动连接 | 关闭原页面，等断线宽限结束或先退出登录 |
+| 编译报找不到 `boost/version.hpp` | 没放 Boost | 解压到 `third_party/boost_1_78_0` |
+| 编译报找不到 `mysql.h` | 没装 MySQL 客户端库或路径不同 | 安装 MySQL Server 8.0，或指定 `-DMYSQL_ROOT_DIR=...` |
 
-关闭网页后，WebSocket 断连会释放昵称的在线登录占用，用户可以立即用正确密码重新登录；新登录会撤销旧 session，并清理旧私聊窗口。仍有活动连接的账号继续拒绝重复登录。
+## 已验证环境
 
-为避免刷新、短暂断网或小程序切后台导致误退出，断连会话保留 5 分钟重连宽限期。期间原 session 可以恢复，HTTP 查询不会延长宽限期。超时后凭据失效，服务器每 15 秒回收一次并清理私聊。登录后一直未建立 WebSocket 的会话在 15 秒后失效。旧连接迟到的关闭回调不能释放新连接的登录占用。
+| 项目 | 版本 |
+| --- | --- |
+| 操作系统 | Windows 10.0.26300 x64 |
+| 编译器 | MSVC 19.44.35216（Visual Studio 2022 17.14） |
+| CMake | 4.3.1 |
+| MySQL | 8.0.45（服务端与客户端库） |
+| Node.js | v24.14.1 |
+| Boost | 1.78 |
 
-网页前端在页面离开时关闭连接，不依赖可能丢失的 unload 退出请求；重连前验证 session，失效则返回登录页，避免无限重连。
+## 开发约定
 
-回归检查：
-
-```powershell
-cmake -S . -B out/build/session-fix -G "Visual Studio 17 2022" -A x64
-cmake --build out/build/session-fix --config RelWithDebInfo --target session_lifecycle_test session_socket_server browser_chatroom_architecture
-ctest --test-dir out/build/session-fix -C RelWithDebInfo --output-on-failure
-node --check frontend/js/main.js
-```
-
-运行中的旧后端不会自动加载新代码。改完代码后重新编译，然后 `Ctrl+C` 停掉旧进程，再执行 `./start-backend.ps1` 即可。重启会清空内存中的登录状态，但不会删除账号数据。
-
-## 架构要求
-
-- 每个核心接口保留中文注释
-- 注释格式统一为：
+- 每个核心接口保留中文注释，格式统一为：
   - `1)代码逻辑：`
   - `2)返回值类型 类型原因 (哪个接口调用)`
   - `3)参数类型 类型原因 (为什么是这个参数，这个参数符合代码逻辑的哪个要求)`
-
-## 当前目录
-
-- `include/framework/`：Crow 启动装配、路由注册、统一响应格式
-- `include/models/`：用户、消息、大厅会话、私聊窗口会话模型
-- `include/websocket/`：WebSocket 连接管理、消息分发、聊天入口控制
-- `include/user/`：注册、登录、登出、鉴权接口
-- `include/chat/`：大厅、私聊、在线用户、聊天协议接口
-- `include/storage/`：存储接口定义，`mysql/` 下是 MySQL 实现
-- `include/common/`：公共常量与随机 ID 工具
-- `src/`：程序启动入口
+- 改动代码后重新编译，停掉旧进程再 `./start-backend.ps1`；运行中的进程不会自动加载新代码。
