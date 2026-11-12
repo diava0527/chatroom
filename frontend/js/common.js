@@ -4,7 +4,8 @@
 // ================================
 
 const ChatConfig = {
-    API_BASE: "http://127.0.0.1:8080",
+    // 页面由后端同一端口托管，接口和页面同源，用空串走相对路径即可
+    API_BASE: "",
     SESSION_KEY: "sessionId",
     NICKNAME_KEY: "nickname",
     WS_PATH: "/ws/chat",
@@ -31,9 +32,10 @@ function clearSession() {
 }
 
 function buildWsUrl() {
-    const base = ChatConfig.API_BASE.replace(/^http/, "ws");
+    // WebSocket 地址跟随当前页面来源：http 用 ws，https 用 wss
+    const protocol = location.protocol === "https:" ? "wss:" : "ws:";
     const sid = getSessionId() || "";
-    return `${base}${ChatConfig.WS_PATH}?sessionId=${encodeURIComponent(sid)}`;
+    return `${protocol}//${location.host}${ChatConfig.WS_PATH}?sessionId=${encodeURIComponent(sid)}`;
 }
 
 // ---------- HTTP 请求封装 ----------

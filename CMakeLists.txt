@@ -20,8 +20,6 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/third_party/boost_1_78_0
 )
 
-<<<<<<< HEAD
-=======
 option(CHATROOM_ENABLE_MYSQL "Build MySQL-backed storage support" ON)
 
 if(CHATROOM_ENABLE_MYSQL)
@@ -96,22 +94,6 @@ if(CHATROOM_ENABLE_MYSQL)
     endif()
 
     add_library(chatroom::mysql ALIAS chatroom_mysql)
-
-    add_executable(mysql_connection_check
-        src/mysql_connection_check.cpp
-    )
-    target_link_libraries(mysql_connection_check PRIVATE chatroom::mysql)
-
-    if(WIN32)
-        add_custom_command(
-            TARGET mysql_connection_check
-            POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${MYSQL_RUNTIME_FILES}
-                "$<TARGET_FILE_DIR:mysql_connection_check>"
-            VERBATIM
-        )
-    endif()
 endif()
 
 if(BUILD_TESTING)
@@ -146,11 +128,8 @@ if(BUILD_TESTING)
     endif()
 endif()
 
->>>>>>> N-storage
 add_executable(browser_chatroom_architecture
     src/main.cpp
-    "include/user/user_service_impl.h"
-    "include/user/user_service_impl.cpp"
     "include/user/auth_service_impl.cpp"
     "include/user/auth_service_impl.h"
     "include/chat/online_user_service.cpp"
@@ -175,8 +154,21 @@ target_compile_definitions(
     PRIVATE CROW_USE_BOOST=1
 )
 
-target_compile_definitions(browser_chatroom_architecture PRIVATE CROW_USE_BOOST=1)
+if(CHATROOM_ENABLE_MYSQL)
+    target_compile_definitions(browser_chatroom_architecture PRIVATE CHATROOM_ENABLE_MYSQL=1)
+    target_link_libraries(browser_chatroom_architecture PRIVATE chatroom::mysql)
+endif()
 
 if(WIN32)
     target_link_libraries(browser_chatroom_architecture PRIVATE ws2_32)
+    if(CHATROOM_ENABLE_MYSQL)
+        add_custom_command(
+            TARGET browser_chatroom_architecture
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${MYSQL_RUNTIME_FILES}
+                "$<TARGET_FILE_DIR:browser_chatroom_architecture>"
+            VERBATIM
+        )
+    endif()
 endif()

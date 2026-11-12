@@ -1,27 +1,19 @@
-<<<<<<< HEAD
 #define CROW_USE_BOOST 1
 #define NOMINMAX
 
-=======
->>>>>>> N-storage
 #include "crow_all.h"
 
 #include <cstdlib>
 #include <chrono>
 #include <exception>
+#include <filesystem>
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <string>
 
-<<<<<<< HEAD
-#include <windows.h>
-
-#include "chat/chat_protocol.h"
-=======
 #include "chat/chat_controller_impl.h"
->>>>>>> N-storage
 #include "chat/lobby_service_impl.h"
 #include "chat/online_user_service_impl.h"
 #include "chat/private_chat_service_impl.h"
@@ -47,20 +39,14 @@ namespace {
 
 constexpr std::uint16_t kServerPort = 8080;
 constexpr const char* kBindAddress = "127.0.0.1";
-constexpr const char* kDefaultFrontendOrigin = "http://localhost:5500";
+constexpr const char* kDefaultFrontendOrigin = "http://localhost:8080";
+constexpr const char* kDefaultFrontendDir = "frontend";
 constexpr const char* kSessionHeader = "X-Session-Id";
 
-<<<<<<< HEAD
-std::filesystem::path ProjectRoot() {
-    char buffer[MAX_PATH];
-    GetModuleFileNameA(nullptr, buffer, MAX_PATH);
-    return std::filesystem::path(buffer).parent_path();
-=======
 std::string ReadEnvironmentOrDefault(const char* name,
                                      const char* defaultValue) {
     const char* value = std::getenv(name);
     return value == nullptr || *value == '\0' ? defaultValue : value;
->>>>>>> N-storage
 }
 
 crow::response BuildErrorResponse(int httpStatus,
@@ -72,6 +58,22 @@ crow::response BuildErrorResponse(int httpStatus,
     body["data"] = nullptr;
     crow::response response(httpStatus, body);
     response.set_header("Content-Type", "application/json; charset=utf-8");
+    return response;
+}
+
+// 把浏览器请求的静态资源路径映射到前端目录下的真实文件。
+// 页面和接口由同一个 Crow 进程、同一个端口提供，因此天然同源，无需再开静态服务器。
+crow::response ServeFrontendFile(const std::filesystem::path& frontendDir,
+                                 const std::string& relativePath) {
+    // 拒绝空路径与上跳目录，避免越权读取前端目录之外的文件
+    if (relativePath.empty()
+        || relativePath.find("..") != std::string::npos) {
+        return BuildErrorResponse(404, 1404, "not found");
+    }
+
+    crow::response response;
+    // set_static_file_info 会按扩展名推断 Content-Type，文件不存在时自动返回 404
+    response.set_static_file_info((frontendDir / relativePath).string());
     return response;
 }
 
@@ -181,9 +183,6 @@ int main() {
                     } catch (const std::exception& error) {
                         std::cerr << "Session cleanup failed: " << error.what() << '\n';
                     }
-                });
-                CROW_ROUTE(app, "/")([] {
-                    return "chatroom backend is running";
                 });
 
                 CROW_ROUTE(app, "/api/v1/health")([database] {
@@ -301,9 +300,26 @@ int main() {
                                        std::uint16_t) {
                             wsController->OnClose(connection);
                         });
+
+                // 前端页面与静态资源由后端一起提供，页面和接口同源。
+                // 这两条路由必须注册在最后：Crow 在多个规则都能匹配时取注册序号更小的那条，
+                // 所以 /api/v1/* 与 /ws/chat 仍然优先，不会被静态路由抢走。
+                const std::filesystem::path frontendDir(
+                    ReadEnvironmentOrDefault("FRONTEND_DIR",
+                                             kDefaultFrontendDir));
+                CROW_ROUTE(app, "/")([frontendDir] {
+                    return ServeFrontendFile(frontendDir, "login.html");
+                });
+                CROW_ROUTE(app, "/<path>")([frontendDir](std::string path) {
+                    return ServeFrontendFile(frontendDir, path);
+                });
             });
 
         std::cout << "Chatroom backend starting at http://127.0.0.1:8080\n";
+        std::cout << "Serving frontend from: "
+                  << ReadEnvironmentOrDefault("FRONTEND_DIR",
+                                              kDefaultFrontendDir)
+                  << '\n';
         serverApp.Run();
         return 0;
     } catch (const chatroom::storage::mysql::MySqlError& error) {

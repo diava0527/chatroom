@@ -11,7 +11,7 @@ inline constexpr int kSuccessCode = 0;
 inline constexpr int kNicknameExistsCode = 1001;
 inline constexpr int kLoginFailedCode = 1002;
 inline constexpr int kSessionInvalidCode = 1003; 
-inline constexpr int kInvalidParamCode = 1004;	//²ÎÊıÈ±Ê§»ò¸ñÊ½´íÎó
-inline constexpr int kTargetNotOnlineCode = 1005; // Ä¿±êÓÃ»§²»ÔÚÏß
+inline constexpr int kInvalidParamCode = 1004;	//å‚æ•°ç¼ºå¤±æˆ–æ ¼å¼é”™è¯¯
+inline constexpr int kTargetNotOnlineCode = 1005; // ç›®æ ‡ç”¨æˆ·ä¸åœ¨çº¿
 
 }  // namespace chatroom::common

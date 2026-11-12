@@ -7,7 +7,7 @@
 *.opensdf
 *.opendb
 /third_party
-# ±àÒëÊä³ö
+# ç¼–è¯‘è¾“å‡º
 bin/
 obj/
 Debug/
@@ -23,17 +23,22 @@ x86/
 *.obj
 *.log
 
-# IDE ÅäÖÃ
+# IDE é…ç½®
 *.code-workspace
 .idea/
 *.iml
 
-# ÏµÍ³ÎÄ¼ş
+# æœ¬åœ°ç¯å¢ƒå˜é‡ï¼ˆå«æ•°æ®åº“å¯†ç ï¼Œåªæäº¤ .env.exampleï¼‰
+.env
+.env.local
+.env.*.local
+
+# ç³»ç»Ÿæ–‡ä»¶
 .DS_Store
 Thumbs.db
 *.tmp
 
-# ±àÒëÉú³ÉµÄÁÙÊ±ÎÄ¼ş
+# ç¼–è¯‘ç”Ÿæˆçš„ä¸´æ—¶æ–‡ä»¶
 *.o
 *.so
 *.a

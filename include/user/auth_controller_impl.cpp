@@ -2,28 +2,28 @@
 
 namespace chatroom::user {
 
-	//ÏÔÊ½¹¹Ôìº¯Êı
+	//æ˜¾å¼æ„é€ å‡½æ•°
 	AuthControllerImpl::AuthControllerImpl(std::shared_ptr<AuthService> service):auth_service_(std::move(service)){}
 
-	// 1)´úÂëÂß¼­£º½ÓÊÕ×¢²á HTTP ÇëÇó¡¢½âÎöêÇ³ÆºÍÃÜÂë¡¢µ÷ÓÃ×¢²á·şÎñ²¢·µ»ØÍ³Ò»ÏìÓ¦¡£
-	// 2)·µ»ØÖµÀàĞÍ£ºcrow::response£¬Ô­ÒòÊÇ×¢²á½Ó¿ÚÖ±½Ó¶ÔÍâÌá¹© HTTP ·şÎñ£¬¹© /api/v1/auth/register Â·ÓÉµ÷ÓÃ¡£
-	// 3)²ÎÊıÀàĞÍ£ºconst crow::request&£¬Ô­ÒòÊÇ×¢²á²ÎÊıÀ´×ÔÔ­Ê¼ HTTP ÇëÇóÌå£¬²ÎÊıÖ±½Ó¶ÔÓ¦ Crow Â·ÓÉÇ©Ãû¡£
+	// 1)ä»£ç é€»è¾‘ï¼šæ¥æ”¶æ³¨å†Œ HTTP è¯·æ±‚ã€è§£ææ˜µç§°å’Œå¯†ç ã€è°ƒç”¨æ³¨å†ŒæœåŠ¡å¹¶è¿”å›ç»Ÿä¸€å“åº”ã€‚
+	// 2)è¿”å›å€¼ç±»å‹ï¼šcrow::responseï¼ŒåŸå› æ˜¯æ³¨å†Œæ¥å£ç›´æ¥å¯¹å¤–æä¾› HTTP æœåŠ¡ï¼Œä¾› /api/v1/auth/register è·¯ç”±è°ƒç”¨ã€‚
+	// 3)å‚æ•°ç±»å‹ï¼šconst crow::request&ï¼ŒåŸå› æ˜¯æ³¨å†Œå‚æ•°æ¥è‡ªåŸå§‹ HTTP è¯·æ±‚ä½“ï¼Œå‚æ•°ç›´æ¥å¯¹åº” Crow è·¯ç”±ç­¾åã€‚
 	crow::response AuthControllerImpl::Register(const crow::request& request) {
 
-		auto json_body = crow::json::load(request.body);                               //½âÎöÇëÇóÌå
+		auto json_body = crow::json::load(request.body);                               //è§£æè¯·æ±‚ä½“
 
-		if (!json_body || !json_body.has("nickname") || !json_body.has("password")) {  //Ğ£ÑéÊÇ·ñºÏ·¨
+		if (!json_body || !json_body.has("nickname") || !json_body.has("password")) {  //æ ¡éªŒæ˜¯å¦åˆæ³•
 			return crow::response(400, crow::json::wvalue(
 				{ {"code",1004},
 				{"message","invalid request"},
-				{"data",crow::json::wvalue()} }                                        //¹¹Ôì¿Õ¶ÔÏó·µ»Ø
+				{"data",crow::json::wvalue()} }                                        //æ„é€ ç©ºå¯¹è±¡è¿”å›
 			));
 		}
 
 		auto nick_val = json_body["nickname"];
 		auto pwd_val = json_body["password"];
 		if (nick_val.t() != crow::json::type::String || pwd_val.t() != crow::json::type::String){
-			                                                                           // ²ÎÊıÀàĞÍ´íÎó
+			                                                                           // å‚æ•°ç±»å‹é”™è¯¯
 			return crow::response(400, crow::json::wvalue(
 				{ {"code",1004},
 				{"message","invalid request"},
@@ -32,9 +32,9 @@ namespace chatroom::user {
 		}
 
 		std::string nickname = nick_val.s();
-		std::string password = pwd_val.s();                                           //ÌáÈ¡²ÎÊı
+		std::string password = pwd_val.s();                                           //æå–å‚æ•°
 
-		if (nickname.empty() || password.empty()) {                                   //²ÎÊıÎª¿Õ
+		if (nickname.empty() || password.empty()) {                                   //å‚æ•°ä¸ºç©º
 			return crow::response(400, crow::json::wvalue(
 				{ {"code",1004},
 				{"message","invalid request"},
@@ -42,10 +42,10 @@ namespace chatroom::user {
 			));
 		}
 
-		bool flag = auth_service_->Register(nickname, password);                      //µ÷ÓÃÒµÎñ²ã×¢²áÊµÏÖ
+		bool flag = auth_service_->Register(nickname, password);                      //è°ƒç”¨ä¸šåŠ¡å±‚æ³¨å†Œå®ç°
 
 		if (!flag) {
-			return crow::response(409, crow::json::wvalue(                           //·µ»ØÏìÓ¦
+			return crow::response(409, crow::json::wvalue(                           //è¿”å›å“åº”
 				{ {"code",1001},
 				{"message","nickname already exists"},
 				{"data",crow::json::wvalue()} }
@@ -61,13 +61,13 @@ namespace chatroom::user {
 	}
 
 
-	// 1)´úÂëÂß¼­£º½ÓÊÕµÇÂ¼ HTTP ÇëÇó¡¢Ğ£ÑéÊäÈë¡¢µ÷ÓÃµÇÂ¼·şÎñ²¢ÔÚ³É¹¦Ê±·µ»Ø sessionId¡£
-	// 2)·µ»ØÖµÀàĞÍ£ºcrow::response£¬Ô­ÒòÊÇµÇÂ¼½Ó¿Ú×îÖÕÒªÊä³ö±ê×¼ JSON ÏìÓ¦£¬¹© /api/v1/auth/login Â·ÓÉµ÷ÓÃ¡£
-	// 3)²ÎÊıÀàĞÍ£ºconst crow::request&£¬Ô­ÒòÊÇµÇÂ¼²ÎÊıºÍÇëÇóÍ·¶¼´Ó HTTP ÇëÇó¶ÔÏóÖĞ½âÎö£¬²ÎÊıÖ±½Ó¶ÔÓ¦ Crow Â·ÓÉÇ©Ãû¡£
+	// 1)ä»£ç é€»è¾‘ï¼šæ¥æ”¶ç™»å½• HTTP è¯·æ±‚ã€æ ¡éªŒè¾“å…¥ã€è°ƒç”¨ç™»å½•æœåŠ¡å¹¶åœ¨æˆåŠŸæ—¶è¿”å› sessionIdã€‚
+	// 2)è¿”å›å€¼ç±»å‹ï¼šcrow::responseï¼ŒåŸå› æ˜¯ç™»å½•æ¥å£æœ€ç»ˆè¦è¾“å‡ºæ ‡å‡† JSON å“åº”ï¼Œä¾› /api/v1/auth/login è·¯ç”±è°ƒç”¨ã€‚
+	// 3)å‚æ•°ç±»å‹ï¼šconst crow::request&ï¼ŒåŸå› æ˜¯ç™»å½•å‚æ•°å’Œè¯·æ±‚å¤´éƒ½ä» HTTP è¯·æ±‚å¯¹è±¡ä¸­è§£æï¼Œå‚æ•°ç›´æ¥å¯¹åº” Crow è·¯ç”±ç­¾åã€‚
 	crow::response AuthControllerImpl::Login(const crow::request& request) {
-		auto json_body = crow::json::load(request.body);                               //½âÎöÇëÇóÌå
+		auto json_body = crow::json::load(request.body);                               //è§£æè¯·æ±‚ä½“
 
-		if (!json_body || !json_body.has("nickname") || !json_body.has("password")) {  //Ğ£ÑéÊÇ·ñºÏ·¨
+		if (!json_body || !json_body.has("nickname") || !json_body.has("password")) {  //æ ¡éªŒæ˜¯å¦åˆæ³•
 			return crow::response(400, crow::json::wvalue(
 				{ {"code",1002},
 				{"message","nickname or password error"},
@@ -78,7 +78,7 @@ namespace chatroom::user {
 		auto nick_val = json_body["nickname"];
 		auto pwd_val = json_body["password"];
 		if (nick_val.t() != crow::json::type::String || pwd_val.t() != crow::json::type::String) {
-			// ²ÎÊıÀàĞÍ´íÎó
+			// å‚æ•°ç±»å‹é”™è¯¯
 			return crow::response(400, crow::json::wvalue(
 				{ {"code",1002},
 				{"message","nickname or password error"} ,
@@ -87,9 +87,9 @@ namespace chatroom::user {
 		}
 
 		std::string nickname = nick_val.s();
-		std::string password = pwd_val.s();                                            //ÌáÈ¡²ÎÊı
+		std::string password = pwd_val.s();                                            //æå–å‚æ•°
 
-		if (nickname.empty() || password.empty()) {                                   //²ÎÊıÎª¿Õ
+		if (nickname.empty() || password.empty()) {                                   //å‚æ•°ä¸ºç©º
 			return crow::response(400, crow::json::wvalue(
 				{ {"code",1002},
 				{"message","nickname or password error"} ,
@@ -97,9 +97,9 @@ namespace chatroom::user {
 			));
 		}
 
-		auto sid = auth_service_->Login(nickname,password);                          //µ÷ÓÃÒµÎñ²ãµÇÂ¼ÊµÏÖ
+		auto sid = auth_service_->Login(nickname,password);                          //è°ƒç”¨ä¸šåŠ¡å±‚ç™»å½•å®ç°
 
-		if (!sid.has_value()) {                                                      //·µ»ØÏìÓ¦
+		if (!sid.has_value()) {                                                      //è¿”å›å“åº”
 			return crow::response(401, crow::json::wvalue(
 				{ {"code",1002},
 				{"message","nickname or password error"} ,
@@ -116,14 +116,14 @@ namespace chatroom::user {
 	}
 
 
-	// 1)´úÂëÂß¼­£º½ÓÊÕµÇ³ö HTTP ÇëÇó¡¢ÌáÈ¡ sessionId¡¢µ÷ÓÃµÇ³ö·şÎñ²¢·µ»Ø´¦Àí½á¹û¡£
-	// 2)·µ»ØÖµÀàĞÍ£ºcrow::response£¬Ô­ÒòÊÇµÇ³ö½Ó¿ÚÒ²ÊÇ±ê×¼ HTTP ¶ÔÍâ½Ó¿Ú£¬¹© /api/v1/auth/logout Â·ÓÉµ÷ÓÃ¡£
-	// 3)²ÎÊıÀàĞÍ£ºconst crow::request&£¬Ô­ÒòÊÇ sessionId Í¨¹ıÇëÇóÍ·´«µİ£¬²ÎÊıÖ±½Ó¶ÔÓ¦ Crow Â·ÓÉÇ©Ãû¡£
+	// 1)ä»£ç é€»è¾‘ï¼šæ¥æ”¶ç™»å‡º HTTP è¯·æ±‚ã€æå– sessionIdã€è°ƒç”¨ç™»å‡ºæœåŠ¡å¹¶è¿”å›å¤„ç†ç»“æœã€‚
+	// 2)è¿”å›å€¼ç±»å‹ï¼šcrow::responseï¼ŒåŸå› æ˜¯ç™»å‡ºæ¥å£ä¹Ÿæ˜¯æ ‡å‡† HTTP å¯¹å¤–æ¥å£ï¼Œä¾› /api/v1/auth/logout è·¯ç”±è°ƒç”¨ã€‚
+	// 3)å‚æ•°ç±»å‹ï¼šconst crow::request&ï¼ŒåŸå› æ˜¯ sessionId é€šè¿‡è¯·æ±‚å¤´ä¼ é€’ï¼Œå‚æ•°ç›´æ¥å¯¹åº” Crow è·¯ç”±ç­¾åã€‚
 	crow::response AuthControllerImpl::Logout(const crow::request& request) {
 
-		std::string sessionId = request.get_header_value("X-Session-Id");             //´ÓÇëÇóÍ·»ñÈ¡sessionId
+		std::string sessionId = request.get_header_value("X-Session-Id");             //ä»è¯·æ±‚å¤´è·å–sessionId
 
-		if (sessionId.empty()) {                                                      //sessionIdÎª¿Õ
+		if (sessionId.empty()) {                                                      //sessionIdä¸ºç©º
 			return crow::response(400, crow::json::wvalue(
 				{ {"code",1003},
 				{"message","sessionId invalid"} ,
@@ -131,10 +131,10 @@ namespace chatroom::user {
 			));
 		}
 
-		bool flag = auth_service_->Logout(sessionId);                                 //µ÷ÓÃÒµÎñ²ãµÇ³öÊµÏÖ
+		bool flag = auth_service_->Logout(sessionId);                                 //è°ƒç”¨ä¸šåŠ¡å±‚ç™»å‡ºå®ç°
 
 		if (!flag) {
-			return crow::response(401, crow::json::wvalue(                           //·µ»ØÏìÓ¦
+			return crow::response(401, crow::json::wvalue(                           //è¿”å›å“åº”
 				{ {"code",1003},
 				{"message","sessionId invalid"},
 				{"data",crow::json::wvalue()} }

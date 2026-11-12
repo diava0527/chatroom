@@ -2,32 +2,32 @@
 
 namespace chatroom::storage {
 
-	// ¹¦ÄÜ£º°Ñ×¢²á³É¹¦µÄÓÃ»§±£´æµ½ÄÚ´æÈİÆ÷ÖĞ£¬²¢±£Ö¤êÇ³Æ²»¿ÉÖØ¸´¡£
+	// åŠŸèƒ½ï¼šæŠŠæ³¨å†ŒæˆåŠŸçš„ç”¨æˆ·ä¿å­˜åˆ°å†…å­˜å®¹å™¨ä¸­ï¼Œå¹¶ä¿è¯æ˜µç§°ä¸å¯é‡å¤ã€‚
 	bool UserMemoryStoreImpl::SaveUser(const chatroom::models::User& user) {
-		std::lock_guard<std::mutex> lock(mtx);                              // Ğ´ÈëÖ®Ç°×Ô¶¯¼ÓËø£¬³ö×÷ÓÃÓò×Ô¶¯½âËø
+		std::lock_guard<std::mutex> lock(mtx);                              // å†™å…¥ä¹‹å‰è‡ªåŠ¨åŠ é”ï¼Œå‡ºä½œç”¨åŸŸè‡ªåŠ¨è§£é”
 		for (auto const& x : UserLists) {
-			if (x.nickname == user.nickname) {                              //êÇ³ÆÒÑ´æÔÚ
+			if (x.nickname == user.nickname) {                              //æ˜µç§°å·²å­˜åœ¨
 				return false;
 			}
 		} 
-		UserLists.push_back(user);                                         //±£´æĞÂÓÃ»§
+		UserLists.push_back(user);                                         //ä¿å­˜æ–°ç”¨æˆ·
 		return true;
 	}
 
-	// ¹¦ÄÜ£º°´êÇ³Æ¶ÁÈ¡ÓÃ»§ĞÅÏ¢£¬ÓÃÓÚµÇÂ¼Ğ£ÑéºÍÆäËûÓÃ»§Ïà¹ØÒµÎñ¡£
+	// åŠŸèƒ½ï¼šæŒ‰æ˜µç§°è¯»å–ç”¨æˆ·ä¿¡æ¯ï¼Œç”¨äºç™»å½•æ ¡éªŒå’Œå…¶ä»–ç”¨æˆ·ç›¸å…³ä¸šåŠ¡ã€‚
 	std::optional<chatroom::models::User>UserMemoryStoreImpl::FindUserByNickname(const std::string& nickname) const {
-		std::lock_guard<std::mutex> lock(mtx);                             // ¶ÁÈ¡Ö®Ç°×Ô¶¯¼ÓËø£¬³ö×÷ÓÃÓò×Ô¶¯½âËø
+		std::lock_guard<std::mutex> lock(mtx);                             // è¯»å–ä¹‹å‰è‡ªåŠ¨åŠ é”ï¼Œå‡ºä½œç”¨åŸŸè‡ªåŠ¨è§£é”
 		for (auto const& x : UserLists) {
-			if (x.nickname == nickname) {                                  //´æÔÚ¸ÃêÇ³ÆÓÃ»§
+			if (x.nickname == nickname) {                                  //å­˜åœ¨è¯¥æ˜µç§°ç”¨æˆ·
 				return x;
 			}
 		}
-		return std::nullopt;                                              //²»´æÔÚ¸ÃêÇ³ÆÓÃ»§
+		return std::nullopt;                                              //ä¸å­˜åœ¨è¯¥æ˜µç§°ç”¨æˆ·
 	}
 
-	// ¹¦ÄÜ£º´úÂëÂß¼­£º¶ÁÈ¡µ±Ç°È«²¿ÄÚ´æÓÃ»§Êı¾İ£¬ÓÃÓÚµ÷ÊÔ¡¢¹ÜÀí»òºóĞøÀ©Õ¹¡£
+	// åŠŸèƒ½ï¼šä»£ç é€»è¾‘ï¼šè¯»å–å½“å‰å…¨éƒ¨å†…å­˜ç”¨æˆ·æ•°æ®ï¼Œç”¨äºè°ƒè¯•ã€ç®¡ç†æˆ–åç»­æ‰©å±•ã€‚
 	std::vector<chatroom::models::User> UserMemoryStoreImpl::ListUsers() const {
-		std::lock_guard<std::mutex> lock(mtx);                             // ¶ÁÈ¡Ö®Ç°×Ô¶¯¼ÓËø£¬³ö×÷ÓÃÓò×Ô¶¯½âËø
+		std::lock_guard<std::mutex> lock(mtx);                             // è¯»å–ä¹‹å‰è‡ªåŠ¨åŠ é”ï¼Œå‡ºä½œç”¨åŸŸè‡ªåŠ¨è§£é”
 		return UserLists;
 	}
 
