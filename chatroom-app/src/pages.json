@@ -1,0 +1,27 @@
+{
+  "pages": [
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "聊天室",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/chat/index",
+      "style": {
+        "navigationBarTitleText": "聊天室",
+        "navigationStyle": "custom",
+        "disableScroll": true
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "聊天室",
+    "navigationBarBackgroundColor": "#f1f4fb",
+    "backgroundColor": "#f1f4fb",
+    "backgroundColorTop": "#f1f4fb",
+    "backgroundColorBottom": "#f1f4fb"
+  }
+}

@@ -1,0 +1,134 @@
+/* 全局基础样式：只放跨页面共享的元素默认值与工具类 */
+
+page {
+  background: $color-canvas;
+  color: $color-text;
+  font-family: $font-family-base;
+  font-size: $font-body;
+  line-height: $leading-normal;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+view,
+text,
+input,
+textarea,
+button,
+scroll-view,
+image {
+  box-sizing: border-box;
+}
+
+button {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: normal;
+  color: inherit;
+  text-align: center;
+}
+
+button::after {
+  border: none;
+}
+
+/* 输入占位符统一色值（小程序通过 placeholder-class 引用） */
+.field-ph {
+  color: $color-faint;
+  font-weight: $weight-regular;
+}
+
+/* 通用表面卡片 */
+.surface-card {
+  @include surface;
+}
+
+.u-truncate {
+  @include truncate;
+}
+
+/* 供各页面共享的进入动效 */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    transform: translate3d(-100%, 0, 0);
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes soft-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* #ifdef H5 */
+/* Web 端滚动条与选区细节 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(23, 32, 71, 0.16);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::selection {
+  background: rgba(74, 92, 245, 0.18);
+}
+/* #endif */

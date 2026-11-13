@@ -1,0 +1,28 @@
+{
+  "name": "聊天室",
+  "appid": "",
+  "description": "聊天室多端前端：同一套 Vue 3 代码运行于 Web 与微信小程序",
+  "versionName": "2.0.0",
+  "versionCode": "200",
+  "transformPx": false,
+  "vueVersion": "3",
+  "uniStatistics": {
+    "enable": false
+  },
+  "h5": {
+    "title": "聊天室",
+    "router": {
+      "mode": "hash",
+      "base": "/"
+    }
+  },
+  "mp-weixin": {
+    "appid": "wxa47a07d61caf85c1",
+    "setting": {
+      "urlCheck": false,
+      "minified": true
+    },
+    "usingComponents": true,
+    "lazyCodeLoading": "requiredComponents"
+  }
+}
