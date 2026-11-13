@@ -36,7 +36,8 @@ src/
 └── pages.json          页面注册与窗口样式
 scripts/
 ├── check.cjs           结构、品牌残留与发布配置检查
-└── test.cjs            真实后端端到端联调
+├── test.cjs            真实后端端到端联调
+└── sync-frontend.cjs   把 Web 构建产物同步到后端托管目录 ../frontend
 ```
 
 ## 本机运行
@@ -59,8 +60,11 @@ npm run dev:mp-weixin
 
 ```powershell
 npm run build:h5          # 产出 dist/build/h5 ，可直接部署为静态站点
+npm run build:backend     # 构建 Web 端并同步到 ../frontend ，由后端直接托管
 npm run build:mp-weixin   # 产出 dist/build/mp-weixin ，用开发者工具上传体验版/正式版
 ```
+
+`npm run build:backend` 等价于 `build:h5` + `sync:frontend`。同步后 <http://localhost:8080> 与开发服务器 <http://localhost:5173> 是同一套页面与在线逻辑，刷新即可生效，无需重启后端（后端根路由固定返回的 `login.html` 会跳转到单页应用入口）。
 
 Web 端三种连接方式，任选其一：
 

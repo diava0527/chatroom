@@ -8,6 +8,8 @@
     "dev:mp-weixin": "uni -p mp-weixin",
     "build:h5": "uni build",
     "build:mp-weixin": "uni build -p mp-weixin",
+    "build:backend": "uni build && node scripts/sync-frontend.cjs",
+    "sync:frontend": "node scripts/sync-frontend.cjs",
     "type-check": "tsc --noEmit",
     "check": "node scripts/check.cjs",
     "test": "node scripts/test.cjs"

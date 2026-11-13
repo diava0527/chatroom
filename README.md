@@ -4,7 +4,7 @@
 
 一个 Crow 进程同时承担三件事：HTTP 业务接口、WebSocket 实时通信、前端静态页面托管。页面和接口天然同源，只需暴露一个端口；对外部署时由 Nginx 终止 TLS 并反向代理。业务数据（用户、大厅消息、私聊会话与消息）持久化在 MySQL，登录态与在线状态保存在进程内存。
 
-仓库内置两套前端：`chatroom-app/` 是基于 uni-app（Vue 3 + TypeScript）的多端前端，一套代码同时构建 **Web** 与 **微信小程序**；`frontend/` 是早期无构建步骤的原生静态页面，仍由后端直接托管，便于快速验证接口。
+仓库内的前端统一为 `chatroom-app/`：基于 uni-app（Vue 3 + TypeScript），一套代码同时构建 **Web** 与 **微信小程序**。Web 端构建产物同步到 `frontend/` 后由后端直接托管，因此 <http://localhost:8080> 与开发服务器 <http://localhost:5173> 是同一套界面与同一份在线逻辑。
 
 ![登录与注册](docs/images/placeholder.svg)
 
@@ -59,8 +59,7 @@
 | 网络库 | Boost.Asio（Boost 1.78 头文件） |
 | 实时通信 | WebSocket（`/ws/chat`） |
 | 数据存储 | MySQL 8.0（官方 C API） |
-| 前端（多端） | uni-app（Vue 3 + TypeScript + Vite），产出 Web 与微信小程序 |
-| 前端（内置静态页） | 原生 HTML / CSS / JavaScript，无构建步骤 |
+| 前端 | uni-app（Vue 3 + TypeScript + Vite），产出 Web 与微信小程序；Web 构建产物由后端托管 |
 | 构建 | CMake + Visual Studio 2022 |
 | 测试 | CTest + Node.js 集成脚本 |
 
@@ -68,7 +67,7 @@
 
 ![后端分层架构](docs/images/architecture.svg)
 
-请求链路：`浏览器 / 微信小程序 ──HTTP / WebSocket──▶ Crow 进程 :8080 ──▶ MySQL`。内置的 `frontend/` 页面由同一个 Crow 进程托管，session、在线状态与 WebSocket 连接保存在进程内存；`chatroom-app/` 构建出的 Web 端与小程序端复用同一套接口。
+请求链路：`浏览器 / 微信小程序 ──HTTP / WebSocket──▶ Crow 进程 :8080 ──▶ MySQL`。Web 构建产物 `frontend/` 由同一个 Crow 进程托管，session、在线状态与 WebSocket 连接保存在进程内存；`chatroom-app/` 构建出的小程序端复用同一套接口。
 
 > 图为 `docs/images/architecture.svg`，可直接编辑该文件调整配色或模块名。
 
@@ -100,7 +99,7 @@ chatroom/
 │  ├─ websocket/                连接管理、消息分发、连接生命周期
 │  ├─ storage/                  存储接口；mysql/ 下为 MySQL 实现
 │  └─ common/                   公共常量与随机 ID
-├─ frontend/                    早期静态前端（HTML / CSS / JS，由后端直接托管）
+├─ frontend/                    多端前端的 Web 构建产物（由后端直接托管）
 ├─ chatroom-app/                多端前端（uni-app + Vue 3 + TypeScript，Web + 微信小程序）
 ├─ tests/                       会话生命周期测试 + WebSocket 集成测试
 ├─ docs/images/                 README 截图与架构图
@@ -333,7 +332,7 @@ cmake --build out/build/app --config RelWithDebInfo --target browser_chatroom_ar
 
 ### 5. 验证
 
-浏览器打开 <http://localhost:8080/>，根路径直接返回登录页。健康检查：
+浏览器打开 <http://localhost:8080/>，根路径进入多端前端的登录页。健康检查：
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8080/api/v1/health
@@ -353,7 +352,13 @@ npm run dev:h5        # Web 端：http://localhost:5173
 npm run dev:mp-weixin # 微信小程序：开发者工具导入 dist/dev/mp-weixin
 ```
 
-Web 端开发时由 Vite 把 `/api/v1` 与 `/ws/chat` 代理到 `127.0.0.1:8080`，无需额外配置跨域；构建命令为 `npm run build:h5` 与 `npm run build:mp-weixin`。小程序正式版需要 HTTPS/WSS 合法域名，细节见 `chatroom-app/README.md`。
+Web 端开发时由 Vite 把 `/api/v1` 与 `/ws/chat` 代理到 `127.0.0.1:8080`，无需额外配置跨域。要更新 8080 托管的界面时执行：
+
+```powershell
+npm run build:backend   # 构建 Web 端并把产物同步到 ../frontend
+```
+
+同步后无需重启后端，刷新 <http://localhost:8080> 即可看到与 5173 完全一致的页面与在线逻辑。小程序的构建命令为 `npm run build:mp-weixin`，正式版需要 HTTPS/WSS 合法域名，细节见 `chatroom-app/README.md`。
 
 ## 配置项
 
@@ -377,7 +382,6 @@ Web 端开发时由 Vite 把 `/api/v1` 与 `/ws/chat` 代理到 `127.0.0.1:8080`
 ```powershell
 ./build.ps1 -WithTests
 ctest --test-dir out/build/app -C RelWithDebInfo --output-on-failure
-node --check frontend/js/main.js
 
 # 多端前端（先在 chatroom-app 下执行 npm install）
 cd chatroom-app
@@ -419,7 +423,7 @@ set -a; . ./.env; set +a
 
 多端前端部署：
 
-- **Web 端**：`cd chatroom-app && npm run build:h5`，把 `dist/build/h5` 交给同一个 Nginx。上面的配置已代理 `/api/v1` 与 `/ws/chat`，页面与接口同源，无需额外 CORS。
+- **Web 端**：`cd chatroom-app && npm run build:backend` 会把构建产物写入 `frontend/`，由后端一并托管（默认 `FRONTEND_DIR=frontend`），Nginx 只需代理 8080；也可以单独把 `dist/build/h5` 部署到 Nginx，上面的配置已代理 `/api/v1` 与 `/ws/chat`，页面与接口同源，无需额外 CORS。
 - **微信小程序**：`npm run build:mp-weixin` 后用微信开发者工具上传；正式版需在小程序后台配置 request 与 socket 合法域名，并在 `chatroom-app/src/services/config.ts` 填入 `RELEASE_API_BASE`（`npm run check -- --release` 会校验）。
 
 ## 常见问题

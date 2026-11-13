@@ -6,3 +6,6 @@ unpackage/
 *.log
 .env
 .env.local
+# 微信开发者工具在项目根目录生成的本地配置（应导入 dist 下的产物）
+project.config.json
+project.private.config.json
