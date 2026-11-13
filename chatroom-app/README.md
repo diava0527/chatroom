@@ -4,6 +4,7 @@
 
 - 小程序 AppID：`wxa47a07d61caf85c1`
 - 本机后端：`C:\Users\31586\Desktop\网络聊天室\chatroom`，健康检查 `http://127.0.0.1:8080/api/v1/health`
+- 项目位置：后端仓库根目录下的 `chatroom-app/`，后端整体说明见上级 `README.md`
 - 当前状态：本机开发调试可用；尚未上传微信版本、提交审核或正式发布
 
 ## 功能范围

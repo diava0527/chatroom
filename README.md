@@ -4,6 +4,8 @@
 
 一个 Crow 进程同时承担三件事：HTTP 业务接口、WebSocket 实时通信、前端静态页面托管。页面和接口天然同源，只需暴露一个端口；对外部署时由 Nginx 终止 TLS 并反向代理。业务数据（用户、大厅消息、私聊会话与消息）持久化在 MySQL，登录态与在线状态保存在进程内存。
 
+仓库内置两套前端：`chatroom-app/` 是基于 uni-app（Vue 3 + TypeScript）的多端前端，一套代码同时构建 **Web** 与 **微信小程序**；`frontend/` 是早期无构建步骤的原生静态页面，仍由后端直接托管，便于快速验证接口。
+
 ![登录与注册](docs/images/placeholder.svg)
 
 ## 界面预览
@@ -19,6 +21,8 @@
 
 建议文件名：`login.png`、`chat.png`、`online-users.png`、`private-chat.png`、`demo.gif`。
 
+> 多端前端（`chatroom-app/`）的实际界面截图已放在 `chatroom-app/.screenshots/`，包含桌面、平板与手机三种尺寸。
+
 ## 功能
 
 ### 已实现
@@ -32,6 +36,7 @@
 - **持久化**：用户、大厅消息、私聊窗口与私聊消息写入 MySQL，首次启动自动建表
 - **单端口部署**：后端直接托管 `frontend/`，无需额外静态服务器，也不需要 CORS
 - **前端交互**：断线自动重连（指数退避）、未读徽章、多标签页会话同步、离开页面静默断开
+- **多端前端**：`chatroom-app/` 用 uni-app + Vue 3 重写了界面，同一份代码构建 Web 与微信小程序，桌面 / 平板 / 手机响应式适配，交互流程与接口协议和上面完全一致
 
 ### 尚未实现 / 已知限制
 
@@ -54,7 +59,8 @@
 | 网络库 | Boost.Asio（Boost 1.78 头文件） |
 | 实时通信 | WebSocket（`/ws/chat`） |
 | 数据存储 | MySQL 8.0（官方 C API） |
-| 前端 | 原生 HTML / CSS / JavaScript，无构建步骤 |
+| 前端（多端） | uni-app（Vue 3 + TypeScript + Vite），产出 Web 与微信小程序 |
+| 前端（内置静态页） | 原生 HTML / CSS / JavaScript，无构建步骤 |
 | 构建 | CMake + Visual Studio 2022 |
 | 测试 | CTest + Node.js 集成脚本 |
 
@@ -62,7 +68,7 @@
 
 ![后端分层架构](docs/images/architecture.svg)
 
-请求链路：`浏览器 ──HTTP / WebSocket──▶ Crow 进程 :8080 ──▶ MySQL`。前端页面由同一个 Crow 进程托管，session、在线状态与 WebSocket 连接保存在进程内存。
+请求链路：`浏览器 / 微信小程序 ──HTTP / WebSocket──▶ Crow 进程 :8080 ──▶ MySQL`。内置的 `frontend/` 页面由同一个 Crow 进程托管，session、在线状态与 WebSocket 连接保存在进程内存；`chatroom-app/` 构建出的 Web 端与小程序端复用同一套接口。
 
 > 图为 `docs/images/architecture.svg`，可直接编辑该文件调整配色或模块名。
 
@@ -94,7 +100,8 @@ chatroom/
 │  ├─ websocket/                连接管理、消息分发、连接生命周期
 │  ├─ storage/                  存储接口；mysql/ 下为 MySQL 实现
 │  └─ common/                   公共常量与随机 ID
-├─ frontend/                    静态前端（HTML / CSS / JS）
+├─ frontend/                    早期静态前端（HTML / CSS / JS，由后端直接托管）
+├─ chatroom-app/                多端前端（uni-app + Vue 3 + TypeScript，Web + 微信小程序）
 ├─ tests/                       会话生命周期测试 + WebSocket 集成测试
 ├─ docs/images/                 README 截图与架构图
 ├─ crow_all.h                   内置的 Crow 头文件
@@ -335,6 +342,19 @@ Invoke-RestMethod http://127.0.0.1:8080/api/v1/health
 
 第一次启动时，程序会自动在 `chatroom` 库里建好 `users`、`lobby_sessions`、`lobby_messages`、`private_chat_sessions`、`private_messages` 五张表；之后再启动只是跳过（`CREATE TABLE IF NOT EXISTS`）。所以看到 `database: "connected"` 就说明建表也完成了，可以用 `SHOW TABLES;` 检查。
 
+### 6. 使用多端前端（可选）
+
+后端启动后，`chatroom-app/` 可以单独运行，不影响上面的内置页面：
+
+```powershell
+cd chatroom-app
+npm install           # 首次安装依赖
+npm run dev:h5        # Web 端：http://localhost:5173
+npm run dev:mp-weixin # 微信小程序：开发者工具导入 dist/dev/mp-weixin
+```
+
+Web 端开发时由 Vite 把 `/api/v1` 与 `/ws/chat` 代理到 `127.0.0.1:8080`，无需额外配置跨域；构建命令为 `npm run build:h5` 与 `npm run build:mp-weixin`。小程序正式版需要 HTTPS/WSS 合法域名，细节见 `chatroom-app/README.md`。
+
 ## 配置项
 
 `.env` 是**可选**的。通过 `start-backend.ps1` 启动时，脚本已经内置了 `DB_HOST` / `DB_PORT` / `DB_NAME` / `DB_USER` 的默认值，密码可以留空由启动时提示输入——也就是说，**什么都不配也能跑起来**。
@@ -358,9 +378,15 @@ Invoke-RestMethod http://127.0.0.1:8080/api/v1/health
 ./build.ps1 -WithTests
 ctest --test-dir out/build/app -C RelWithDebInfo --output-on-failure
 node --check frontend/js/main.js
+
+# 多端前端（先在 chatroom-app 下执行 npm install）
+cd chatroom-app
+npm run type-check   # 类型检查
+npm run check        # 工程结构、页面注册与发布配置检查
+npm test             # 真实后端端到端联调，需后端在运行
 ```
 
-覆盖内容：会话生命周期（登录、断线宽限、重复登录、退出清理）与 WebSocket 端到端收发。
+覆盖内容：会话生命周期（登录、断线宽限、重复登录、退出清理）与 WebSocket 端到端收发；多端前端另覆盖注册登录、大厅双端收发、私聊历史与未读、断线重连、前后台恢复与会话失效跳转。
 
 ## 部署到服务器
 
@@ -391,6 +417,11 @@ set -a; . ./.env; set +a
 ./browser_chatroom_architecture
 ```
 
+多端前端部署：
+
+- **Web 端**：`cd chatroom-app && npm run build:h5`，把 `dist/build/h5` 交给同一个 Nginx。上面的配置已代理 `/api/v1` 与 `/ws/chat`，页面与接口同源，无需额外 CORS。
+- **微信小程序**：`npm run build:mp-weixin` 后用微信开发者工具上传；正式版需在小程序后台配置 request 与 socket 合法域名，并在 `chatroom-app/src/services/config.ts` 填入 `RELEASE_API_BASE`（`npm run check -- --release` 会校验）。
+
 ## 常见问题
 
 | 现象 | 原因 | 处理 |
@@ -409,6 +440,7 @@ set -a; . ./.env; set +a
 | `LNK1168 无法打开 ...exe 进行写入` | 后端还在运行，占用着 exe | 先停掉进程再编译 |
 | `LNK1104 无法打开 ws2_32.lib` | 在非 VS 开发者环境里用 Ninja 构建 | 用 `./build.ps1`（VS 生成器），或在 VS 里生成 |
 | 登录后马上掉线 | 登录后 15 秒内没建立 WebSocket | 检查浏览器网络与 `/ws/chat` 是否可达 |
+| 小程序提示无法连接服务器 | 手机里的 `127.0.0.1` 指向手机自身，或未配置合法域名 | 在登录页「开发连接设置」填写可访问的服务器地址；正式版配置 HTTPS/WSS 合法域名 |
 | 同一昵称登录被拒 | 该昵称仍有活动连接 | 关闭原页面，等断线宽限结束或先退出登录 |
 | 编译报找不到 `boost/version.hpp` | 没放 Boost | 解压到 `third_party/boost_1_78_0` |
 | 编译报找不到 `mysql.h` | 没装 MySQL 客户端库或路径不同 | 安装 MySQL Server 8.0，或指定 `-DMYSQL_ROOT_DIR=...` |
