@@ -63,32 +63,46 @@
           </view>
         </view>
 
-        <scroll-view
-          class="messages"
-          scroll-y
-          :scroll-into-view="state.scrollTarget"
-          scroll-with-animation
-        >
-          <EmptyState
-            v-if="!state.messages.length"
-            :variant="state.currentPartner ? 'private' : 'lobby'"
-          />
-          <view
-            v-for="item in state.messages"
-            :id="item.anchor"
-            :key="item.messageId"
-            class="messages__item"
+        <view class="messages-wrap">
+          <scroll-view
+            class="messages"
+            scroll-y
+            :scroll-top="scrollTopValue"
+            @scroll="onScroll"
+            @scrolltolower="onReachBottom"
           >
-            <MessageBubble
-              :sender-nickname="item.senderNickname"
-              :content="item.content"
-              :time="item.time"
-              :initial="item.initial"
-              :mine="item.mine"
+            <EmptyState
+              v-if="!state.messages.length"
+              :variant="state.currentPartner ? 'private' : 'lobby'"
             />
+            <view
+              v-for="item in state.messages"
+              :id="item.anchor"
+              :key="item.messageId"
+              class="messages__item"
+            >
+              <MessageBubble
+                :sender-nickname="item.senderNickname"
+                :content="item.content"
+                :time="item.time"
+                :initial="item.initial"
+                :mine="item.mine"
+              />
+            </view>
+            <view class="messages__bottom" />
+          </scroll-view>
+
+          <view
+            v-if="pendingNew > 0"
+            class="new-messages"
+            hover-class="new-messages--pressed"
+            :hover-stay-time="80"
+            @click="jumpToLatest"
+          >
+            <text class="new-messages__arrow">↓</text>
+            <text>{{ pendingLabel }}</text>
           </view>
-          <view class="messages__bottom" />
-        </scroll-view>
+        </view>
 
         <ChatComposer
           v-model:draft="draft"
@@ -103,8 +117,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { onHide, onLoad, onShow, onUnload } from '@dcloudio/uni-app'
+import { computed, nextTick, ref, watch } from 'vue'
+import { onHide, onLoad, onReady, onShow, onUnload } from '@dcloudio/uni-app'
 import ChatComposer from '../../components/ChatComposer.vue'
 import ChatSidebar from '../../components/ChatSidebar.vue'
 import EmptyState from '../../components/EmptyState.vue'
@@ -118,6 +132,13 @@ const sidebarOpen = ref(false)
 const draft = ref('')
 const sending = ref(false)
 const loggingOut = ref(false)
+const scrollTopValue = ref(0)
+const atBottom = ref(true)
+const pendingNew = ref(0)
+const viewHeight = ref(0)
+
+// 距离底部 40px 以内视为「在最下面」，与微信的判定接近
+const BOTTOM_THRESHOLD = 40
 
 const viewportWidth = useViewportWidth()
 const isWide = computed(() => viewportWidth.value >= 900)
@@ -133,9 +154,89 @@ const composerNote = computed(() =>
     : `${state.nickname} · 正在公共大厅聊天`,
 )
 
+const pendingLabel = computed(() =>
+  pendingNew.value > 99 ? '99+ 条新消息' : `${pendingNew.value} 条新消息`,
+)
+
 watch(isWide, (wide) => {
   if (wide) sidebarOpen.value = false
 })
+
+function measureViewport() {
+  uni
+    .createSelectorQuery()
+    .select('.messages')
+    .boundingClientRect((rect) => {
+      const height = (rect as unknown as { height?: number } | null)?.height
+      if (typeof height === 'number' && height > 0) viewHeight.value = height
+    })
+    .exec()
+}
+
+onReady(measureViewport)
+
+watch(viewportWidth, () => {
+  void nextTick(measureViewport)
+})
+
+function updateBottom(next: boolean) {
+  atBottom.value = next
+  if (next) pendingNew.value = 0
+}
+
+// scroll-top 只在值变化时生效：在极大值之间交替，浏览器会自动夹到底部
+let scrollBottomFlag = 0
+
+function scrollToLatest() {
+  if (!state.messages.length) return
+  scrollBottomFlag = scrollBottomFlag === 0 ? 1 : 0
+  scrollTopValue.value = 9999998 + scrollBottomFlag
+}
+
+// 消息渲染完成后再滚动，否则会停在「上一条消息」的底部
+async function scrollToLatestAfterRender() {
+  await nextTick()
+  scrollToLatest()
+}
+
+function onScroll(event: {
+  detail: { scrollTop: number; scrollHeight: number }
+}) {
+  const { scrollTop, scrollHeight } = event.detail
+  if (viewHeight.value > 0 && scrollHeight > 0) {
+    updateBottom(scrollHeight - scrollTop - viewHeight.value <= BOTTOM_THRESHOLD)
+  }
+}
+
+function onReachBottom() {
+  updateBottom(true)
+}
+
+function jumpToLatest() {
+  updateBottom(true)
+  scrollToLatest()
+}
+
+// 在底部时自动跟随新消息；否则只累计提示，不打断阅读。
+// 监听最后一条消息的 id 而非数组长度，长会话被截断到 200 条时同样有效。
+watch(
+  () => state.messages[state.messages.length - 1]?.messageId,
+  (next, previous) => {
+    if (!next || next === previous) return
+    if (atBottom.value) void scrollToLatestAfterRender()
+    else pendingNew.value += 1
+  },
+)
+
+// 切换大厅 / 私聊时回到最新位置
+watch(
+  () => state.currentPartner,
+  () => {
+    pendingNew.value = 0
+    atBottom.value = true
+    void scrollToLatestAfterRender()
+  },
+)
 
 onLoad(() => {
   statusBarHeight.value = uni.getSystemInfoSync().statusBarHeight || 0
@@ -178,6 +279,9 @@ async function send() {
   try {
     await client.send(text)
     if (draft.value === text) draft.value = ''
+    // 自己发消息时总是回到最新位置
+    updateBottom(true)
+    void scrollToLatestAfterRender()
   } catch (error) {
     toast(error)
   } finally {
@@ -382,15 +486,58 @@ async function performLogout() {
   background: rgba(74, 92, 245, 0.16);
 }
 
-.messages {
+.messages-wrap {
+  position: relative;
   flex: 1;
-  height: 0;
   min-height: 0;
+}
+
+.messages {
+  height: 100%;
   width: 100%;
 }
 
 .messages__bottom {
   height: $space-md;
+}
+
+.new-messages {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: $radius-pill;
+  background: linear-gradient(135deg, #5b6bff 0%, $color-primary 100%);
+  color: #fff;
+  font-size: $font-caption;
+  font-weight: $weight-semibold;
+  box-shadow: 0 8px 20px rgba(74, 92, 245, 0.3);
+  transform: translateX(-50%);
+  animation: new-messages-in $dur-normal $ease-out;
+}
+
+.new-messages--pressed {
+  background: $color-primary-strong;
+}
+
+.new-messages__arrow {
+  font-size: 13px;
+  line-height: 1;
+}
+
+@keyframes new-messages-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 @include respond-from($bp-desktop) {
