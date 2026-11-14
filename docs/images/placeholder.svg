@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-label="运行截图占位">
-  <rect width="1280" height="720" fill="#F7F7F8"/>
-  <rect x="2" y="2" width="1276" height="716" rx="16" fill="none" stroke="#D3D4DA" stroke-width="3" stroke-dasharray="14 12"/>
-  <text x="640" y="330" text-anchor="middle" font-family="'PingFang SC','Microsoft YaHei',system-ui,sans-serif" font-size="44" fill="#52525B">运行截图占位</text>
-  <text x="640" y="386" text-anchor="middle" font-family="'PingFang SC','Microsoft YaHei',system-ui,sans-serif" font-size="24" fill="#71717A">录制后替换 docs/images/ 下的同名文件即可</text>
-</svg>

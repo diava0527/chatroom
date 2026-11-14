@@ -6,22 +6,21 @@
 
 仓库内的前端统一为 `chatroom-app/`：基于 uni-app（Vue 3 + TypeScript），一套代码同时构建 **Web** 与 **微信小程序**。Web 端构建产物同步到 `frontend/` 后由后端直接托管，因此 <http://localhost:8080> 与开发服务器 <http://localhost:5173> 是同一套界面与同一份在线逻辑。
 
-![登录与注册](docs/images/placeholder.svg)
-
 ## 界面预览
 
-> 当前是占位图。录制自己的运行效果后，把文件放进 `docs/images/` 并替换下面对应路径即可。
+**Web 端聊天大厅**：浏览器登录后进入公共大厅。左侧栏是会话列表（公共大厅、已建立的私聊）和在线成员，右侧是消息流与输入框，顶部显示在线人数与连接状态。
+![Web 端聊天大厅](docs/images/chat.png)
 
-<!-- GIF 演示位：建议 10~20 秒，覆盖 登录 → 进入大厅 → 发送消息 → 私聊 -->
-<!-- 替换为：![演示](docs/images/demo.gif) -->
+**公共大厅：Web 与小程序实时同步**：左侧浏览器与右侧小程序同时停留在公共大厅，任一端发送消息，另一端都能立即收到。
+ ![公共大厅双端同步](docs/images/demo-lobby.gif)
 
-| 聊天大厅 | 在线用户 | 私聊窗口 |
-| --- | --- | --- |
-| ![聊天大厅](docs/images/placeholder.svg) | ![在线用户](docs/images/placeholder.svg) | ![私聊窗口](docs/images/placeholder.svg) |
+**私聊：Web 与小程序实时同步**：Web 端点击在线用户发起私聊，两端私聊窗口同步收发消息。
+![私聊双端同步](docs/images/demo-private-chat.gif)
 
-建议文件名：`login.png`、`chat.png`、`online-users.png`、`private-chat.png`、`demo.gif`。
-
-> 多端前端（`chatroom-app/`）的实际界面截图已放在 `chatroom-app/.screenshots/`，包含桌面、平板与手机三种尺寸。
+| **微信小程序 · 公共大厅** | **微信小程序 · 在线成员** |
+| --- | --- |
+| 同一套 uni-app 代码构建的小程序端，登录后进入同一个大厅，与 Web 端共享在线状态和消息记录 | 从左上角抽屉展开，上方是当前会话，下方是成员列表并标注在线状态；点在线成员即可发起私聊，底部为退出登录 |
+| ![微信小程序 · 公共大厅](docs/images/chat-mp-weixin.png) | ![微信小程序 · 在线成员](docs/images/online-users-mp-weixin.png) |
 
 ## 功能
 
@@ -52,16 +51,16 @@
 
 ## 技术栈
 
-| 层次 | 选型 |
-| --- | --- |
-| 语言 | C++17 |
-| Web 框架 | Crow（`crow_all.h`，随仓库提供） |
-| 网络库 | Boost.Asio（Boost 1.78 头文件） |
-| 实时通信 | WebSocket（`/ws/chat`） |
-| 数据存储 | MySQL 8.0（官方 C API） |
-| 前端 | uni-app（Vue 3 + TypeScript + Vite），产出 Web 与微信小程序；Web 构建产物由后端托管 |
-| 构建 | CMake + Visual Studio 2022 |
-| 测试 | CTest + Node.js 集成脚本 |
+| 层次     | 选型                                                             |
+| ------ | -------------------------------------------------------------- |
+| 语言     | C++17                                                          |
+| Web 框架 | Crow（`crow_all.h`，随仓库提供）                                       |
+| 网络库    | Boost.Asio（Boost 1.78 头文件）                                     |
+| 实时通信   | WebSocket（`/ws/chat`）                                          |
+| 数据存储   | MySQL 8.0（官方 C API）                                            |
+| 前端     | uni-app（Vue 3 + TypeScript + Vite），产出 Web 与微信小程序；Web 构建产物由后端托管 |
+| 构建     | CMake + Visual Studio 2022                                     |
+| 测试     | CTest + Node.js 集成脚本                                           |
 
 ## 架构
 
@@ -71,16 +70,16 @@
 
 > 图为 `docs/images/architecture.svg`，可直接编辑该文件调整配色或模块名。
 
-| 通道 | 路径 | 用途 |
-| --- | --- | --- |
-| HTTP POST | `/api/v1/auth/register` | 注册 |
-| HTTP POST | `/api/v1/auth/login` | 登录，返回 `sessionId` |
-| HTTP POST | `/api/v1/auth/logout` | 登出 |
-| HTTP GET | `/api/v1/users/online` | 在线用户列表 |
-| HTTP POST | `/api/v1/private-chat/session` | 创建私聊窗口 |
-| HTTP GET | `/api/v1/health` | 健康检查（含数据库连通性） |
-| WebSocket | `/ws/chat?sessionId=...` | 大厅 / 私聊消息与历史 |
-| HTTP GET | `/`、`/<path>` | 前端页面与静态资源 |
+| 通道        | 路径                             | 用途                |
+| --------- | ------------------------------ | ----------------- |
+| HTTP POST | `/api/v1/auth/register`        | 注册                |
+| HTTP POST | `/api/v1/auth/login`           | 登录，返回 `sessionId` |
+| HTTP POST | `/api/v1/auth/logout`          | 登出                |
+| HTTP GET  | `/api/v1/users/online`         | 在线用户列表            |
+| HTTP POST | `/api/v1/private-chat/session` | 创建私聊窗口            |
+| HTTP GET  | `/api/v1/health`               | 健康检查（含数据库连通性）     |
+| WebSocket | `/ws/chat?sessionId=...`       | 大厅 / 私聊消息与历史      |
+| HTTP GET  | `/`、`/<path>`                  | 前端页面与静态资源         |
 
 HTTP 鉴权走请求头 `X-Session-Id`，WebSocket 走握手参数 `sessionId`。
 
@@ -116,11 +115,11 @@ chatroom/
 
 整个流程只有两件事：**初始化**（只做一次）和**启动**（每次都用）。
 
-| 场景 | 要执行的命令 | 说明 |
-| --- | --- | --- |
-| 第一次拿到项目 | `./build.ps1` | 把源码编译成 exe，**不启动服务** |
-| 每次要用 | `./start-backend.ps1` | 启动服务，然后浏览器访问 |
-| 改了代码 | `./build.ps1` → 停掉旧进程 → `./start-backend.ps1` | 增量编译通常很快 |
+| 场景      | 要执行的命令                                        | 说明                   |
+| ------- | --------------------------------------------- | -------------------- |
+| 第一次拿到项目 | `./build.ps1`                                 | 把源码编译成 exe，**不启动服务** |
+| 每次要用    | `./start-backend.ps1`                         | 启动服务，然后浏览器访问         |
+| 改了代码    | `./build.ps1` → 停掉旧进程 → `./start-backend.ps1` | 增量编译通常很快             |
 
 所以最省事的路径是：**装 MySQL + 建库账号**（第 0、1 步）→ **`./build.ps1`**（第 3 步，只做一次）→ **`./start-backend.ps1`**（第 4 步）。数据库密码在启动时输入即可，`.env` 是可选的（第 2 步），只用来省掉每次输入。
 
@@ -135,15 +134,15 @@ chatroom/
 
 ### 环境依赖
 
-| 依赖 | 版本 | 说明 |
-| --- | --- | --- |
-| Windows | 10 / 11 x64 | 当前唯一验证过的平台 |
-| Visual Studio 2022 | 含「使用 C++ 的桌面开发」 | 提供 MSVC 与 Windows SDK |
-| CMake | ≥ 3.16 | 需要加入 PATH |
-| MySQL Server 8.0 | 开发时用 8.0.45 | 需要 `include/mysql.h`、`lib/libmysql.lib`、`libmysql.dll`、`libssl-3-x64.dll`、`libcrypto-3-x64.dll` |
-| Boost | 1.78 | 解压到 `third_party/boost_1_78_0`，该目录不入库 |
-| Crow | — | 仓库根目录的 `crow_all.h` 已内置，无需额外安装 |
-| Node.js | 可选 | 仅用于 WebSocket 集成测试 |
+| 依赖                 | 版本              | 说明                                                                                              |
+| ------------------ | --------------- | ----------------------------------------------------------------------------------------------- |
+| Windows            | 10 / 11 x64     | 当前唯一验证过的平台                                                                                      |
+| Visual Studio 2022 | 含「使用 C++ 的桌面开发」 | 提供 MSVC 与 Windows SDK                                                                           |
+| CMake              | ≥ 3.16          | 需要加入 PATH                                                                                       |
+| MySQL Server 8.0   | 开发时用 8.0.45     | 需要 `include/mysql.h`、`lib/libmysql.lib`、`libmysql.dll`、`libssl-3-x64.dll`、`libcrypto-3-x64.dll` |
+| Boost              | 1.78            | 解压到 `third_party/boost_1_78_0`，该目录不入库                                                           |
+| Crow               | —               | 仓库根目录的 `crow_all.h` 已内置，无需额外安装                                                                  |
+| Node.js            | 可选              | 仅用于 WebSocket 集成测试                                                                              |
 
 Boost 1.78 下载地址：<https://archives.boost.io/release/1.78.0/source/boost_1_78_0.zip>，解压后目录结构应为 `third_party/boost_1_78_0/boost/version.hpp`。
 
@@ -154,6 +153,7 @@ MySQL 默认安装在 `C:/Program Files/MySQL/MySQL Server 8.0`；装在别处�
 > **已经用过 PowerShell、平时在终端里敲命令的人，这一整节可以直接跳过**，从第 0 步开始。
 >
 > 只有遇到下面任意一种情况才需要展开：
+>
 > - 不确定自己打开的是 cmd 还是 PowerShell
 > - 执行 `./build.ps1` 报“不是内部或外部命令”
 > - 报错“无法加载文件……因为在此系统上禁止运行脚本”
@@ -167,22 +167,20 @@ MySQL 默认安装在 `C:/Program Files/MySQL/MySQL Server 8.0`；装在别处�
 
 看提示符即可判断：
 
-| 窗口 | 提示符 | 能否执行本项目脚本 |
-| --- | --- | --- |
-| PowerShell | `PS C:\Users\31586\Desktop\网络聊天室\chatroom>` | ✅ |
-| cmd | `C:\Users\31586\Desktop\网络聊天室\chatroom>` | ❌ 会报“不是内部或外部命令” |
+| 窗口         | 提示符                                         | 能否执行本项目脚本       |
+| ---------- | ------------------------------------------- | --------------- |
+| PowerShell | `PS C:\Users\31586\Desktop\网络聊天室\chatroom>` | ✅               |
+| cmd        | `C:\Users\31586\Desktop\网络聊天室\chatroom>`    | ❌ 会报“不是内部或外部命令” |
 
 **② 怎么打开 PowerShell（任选一种）**
 
 1. **最快**：在资源管理器里打开项目文件夹，点一下窗口顶部的地址栏（显示路径的那一栏），输入 `pwsh` 回车。窗口会直接定位在项目目录，不用再 `cd`。
    - 提示找不到 `pwsh`，就输入 `powershell`，打开系统自带的 Windows PowerShell（同样能用）。
 2. 开始菜单搜索 `PowerShell 7`（或 `PowerShell`）打开，再切换目录：
-
    ```powershell
    cd "C:\Users\31586\Desktop\网络聊天室\chatroom"
    ```
-
-3. 在 VS Code 里按 <kbd>Ctrl</kbd> + <kbd>`</kbd> 打开终端，默认就是 PowerShell。
+3. 在 VS Code 里按 <kbd>Ctrl</kbd> + <kbd>\`</kbd> 打开终端，默认就是 PowerShell。
 
 **③ 怎么执行脚本（通用写法，真正的命令在第 3、4 步）**
 
@@ -247,7 +245,6 @@ FLUSH PRIVILEGES;
 - `'chat_app'@'127.0.0.1'` 表示**只允许本机连接**。如果 MySQL 装在另一台机器上，要改成 `'chat_app'@'%'`。
 - 密码里不要有单引号；如果必须有，写成两个单引号 `''`。
 - 提示 `mysql 不是内部或外部命令` 说明 MySQL 的 `bin` 没进 PATH，用开始菜单那个客户端，或用完整路径：
-
   ```powershell
   & "C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe" -u root -p
   ```
@@ -299,11 +296,11 @@ DB_PASSWORD=换成你在上一步给 chat_app 设置的密码
 
 常用参数：
 
-| 参数 | 作用 |
-| --- | --- |
-| 无参数 | 配置（首次自动执行）+ 编译，配置为 `RelWithDebInfo` |
-| `-WithTests` | 额外编译两个测试目标，供 `ctest` 使用 |
-| `-Clean` | 删掉 `out/build/app` 后重新配置 |
+| 参数              | 作用                                             |
+| --------------- | ---------------------------------------------- |
+| 无参数             | 配置（首次自动执行）+ 编译，配置为 `RelWithDebInfo`            |
+| `-WithTests`    | 额外编译两个测试目标，供 `ctest` 使用                        |
+| `-Clean`        | 删掉 `out/build/app` 后重新配置                       |
 | `-Config Debug` | 指定构建配置（`Debug` / `Release` / `RelWithDebInfo`） |
 
 等价的手动命令：
@@ -366,16 +363,16 @@ npm run build:backend   # 构建 Web 端并把产物同步到 ../frontend
 
 配置来源优先级：**当前进程已有的环境变量 > `.env` > 脚本内置默认值**。
 
-| 变量 | 通过脚本启动时 | 直接运行 exe 时 | 说明 |
-| --- | --- | --- | --- |
-| `DB_HOST` | 可选，默认 `127.0.0.1` | 可选，默认 `127.0.0.1` | MySQL 地址 |
-| `DB_PORT` | 可选，默认 `3306` | 可选，默认 `3306` | MySQL 端口 |
-| `DB_NAME` | 可选，默认 `chatroom` | **必填** | 数据库名 |
-| `DB_USER` | 可选，默认 `chat_app` | **必填** | 数据库账号 |
-| `DB_PASSWORD` | 可选，留空则启动时提示输入 | **必填** | 数据库密码 |
-| `DB_CONNECT_TIMEOUT_SECONDS` | 可选，默认 `5` | 可选，默认 `5` | 连接超时秒数 |
-| `FRONTEND_DIR` | 可选，默认 `frontend` | 可选，默认 `frontend` | 前端目录，相对路径以进程工作目录为基准 |
-| `FRONTEND_ORIGIN` | 可选，默认 `http://localhost:8080` | 同左 | 仅在前后端不同源时才需要 |
+| 变量                           | 通过脚本启动时                       | 直接运行 exe 时        | 说明                  |
+| ---------------------------- | ----------------------------- | ----------------- | ------------------- |
+| `DB_HOST`                    | 可选，默认 `127.0.0.1`             | 可选，默认 `127.0.0.1` | MySQL 地址            |
+| `DB_PORT`                    | 可选，默认 `3306`                  | 可选，默认 `3306`      | MySQL 端口            |
+| `DB_NAME`                    | 可选，默认 `chatroom`              | **必填**            | 数据库名                |
+| `DB_USER`                    | 可选，默认 `chat_app`              | **必填**            | 数据库账号               |
+| `DB_PASSWORD`                | 可选，留空则启动时提示输入                 | **必填**            | 数据库密码               |
+| `DB_CONNECT_TIMEOUT_SECONDS` | 可选，默认 `5`                     | 可选，默认 `5`         | 连接超时秒数              |
+| `FRONTEND_DIR`               | 可选，默认 `frontend`              | 可选，默认 `frontend`  | 前端目录，相对路径以进程工作目录为基准 |
+| `FRONTEND_ORIGIN`            | 可选，默认 `http://localhost:8080` | 同左                | 仅在前后端不同源时才需要        |
 
 ## 测试
 
@@ -428,37 +425,37 @@ set -a; . ./.env; set +a
 
 ## 常见问题
 
-| 现象 | 原因 | 处理 |
-| --- | --- | --- |
-| `'.' 不是内部或外部命令` / `无法将“./build.ps1”项识别为 cmdlet` | 在 cmd 窗口里执行 `.ps1`，而不是 PowerShell | 先 `pwsh` 进 PowerShell，或用 `pwsh -File build.ps1`；参考「先认识 PowerShell」 |
-| `无法加载文件 ... 因为在此系统上禁止运行脚本` | 系统执行策略限制 | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`；ZIP 下载的再 `Get-ChildItem -Recurse -File \| Unblock-File` |
-| 输入数据库密码时屏幕上没有任何字符 | 密码输入本来就不回显 | 正常现象，输完直接回车 |
-| `mysql 不是内部或外部命令` | MySQL 的 `bin` 目录没加进 PATH | 用开始菜单的 **MySQL 8.0 Command Line Client**，或用完整路径调用 `mysql.exe` |
-| `Access denied for user 'chat_app'@'localhost'` | 密码填错了，或账号的 host 不是 `127.0.0.1` | 核对 `.env` 里的 `DB_PASSWORD`；确认建账号时写的 host 与连接地址一致 |
-| `Can't connect to MySQL server on '127.0.0.1'` | MySQL 服务没启动 | 管理员 PowerShell 执行 `Start-Service MySQL80` |
-| `Unknown collation: 'utf8mb4_0900_as_cs'` | MySQL 版本太低（5.7）或用了 MariaDB | 换成 MySQL 8.0 |
-| `Application startup failed: DB_NAME is required` | 没读到 `.env`，或变量为空 | 用 `./start-backend.ps1` 启动，或手动导出环境变量 |
-| 启动中抛 `handler already exists for ...` | 同一路径注册了两条路由 | 检查路由注册是否有重复 |
-| `/api/v1/health` 返回 503 | 数据库连不上 | 检查 MySQL 服务、账号密码、`DB_HOST` |
-| 页面 404 | 工作目录不是项目根目录，找不到 `frontend/` | 在项目根目录启动，或用 `FRONTEND_DIR` 指定绝对路径 |
-| `LNK1168 无法打开 ...exe 进行写入` | 后端还在运行，占用着 exe | 先停掉进程再编译 |
-| `LNK1104 无法打开 ws2_32.lib` | 在非 VS 开发者环境里用 Ninja 构建 | 用 `./build.ps1`（VS 生成器），或在 VS 里生成 |
-| 登录后马上掉线 | 登录后 15 秒内没建立 WebSocket | 检查浏览器网络与 `/ws/chat` 是否可达 |
-| 小程序提示无法连接服务器 | 手机里的 `127.0.0.1` 指向手机自身，或未配置合法域名 | 在登录页「开发连接设置」填写可访问的服务器地址；正式版配置 HTTPS/WSS 合法域名 |
-| 同一昵称登录被拒 | 该昵称仍有活动连接 | 关闭原页面，等断线宽限结束或先退出登录 |
-| 编译报找不到 `boost/version.hpp` | 没放 Boost | 解压到 `third_party/boost_1_78_0` |
-| 编译报找不到 `mysql.h` | 没装 MySQL 客户端库或路径不同 | 安装 MySQL Server 8.0，或指定 `-DMYSQL_ROOT_DIR=...` |
+| 现象                                                | 原因                                | 处理                                                                                                            |
+| ------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `'.' 不是内部或外部命令` / `无法将“./build.ps1”项识别为 cmdlet`   | 在 cmd 窗口里执行 `.ps1`，而不是 PowerShell | 先 `pwsh` 进 PowerShell，或用 `pwsh -File build.ps1`；参考「先认识 PowerShell」                                            |
+| `无法加载文件 ... 因为在此系统上禁止运行脚本`                        | 系统执行策略限制                          | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`；ZIP 下载的再 `Get-ChildItem -Recurse -File \| Unblock-File` |
+| 输入数据库密码时屏幕上没有任何字符                                 | 密码输入本来就不回显                        | 正常现象，输完直接回车                                                                                                   |
+| `mysql 不是内部或外部命令`                                 | MySQL 的 `bin` 目录没加进 PATH          | 用开始菜单的 **MySQL 8.0 Command Line Client**，或用完整路径调用 `mysql.exe`                                                 |
+| `Access denied for user 'chat_app'@'localhost'`   | 密码填错了，或账号的 host 不是 `127.0.0.1`    | 核对 `.env` 里的 `DB_PASSWORD`；确认建账号时写的 host 与连接地址一致                                                              |
+| `Can't connect to MySQL server on '127.0.0.1'`    | MySQL 服务没启动                       | 管理员 PowerShell 执行 `Start-Service MySQL80`                                                                     |
+| `Unknown collation: 'utf8mb4_0900_as_cs'`         | MySQL 版本太低（5.7）或用了 MariaDB        | 换成 MySQL 8.0                                                                                                  |
+| `Application startup failed: DB_NAME is required` | 没读到 `.env`，或变量为空                  | 用 `./start-backend.ps1` 启动，或手动导出环境变量                                                                          |
+| 启动中抛 `handler already exists for ...`             | 同一路径注册了两条路由                       | 检查路由注册是否有重复                                                                                                   |
+| `/api/v1/health` 返回 503                           | 数据库连不上                            | 检查 MySQL 服务、账号密码、`DB_HOST`                                                                                    |
+| 页面 404                                            | 工作目录不是项目根目录，找不到 `frontend/`       | 在项目根目录启动，或用 `FRONTEND_DIR` 指定绝对路径                                                                             |
+| `LNK1168 无法打开 ...exe 进行写入`                        | 后端还在运行，占用着 exe                    | 先停掉进程再编译                                                                                                      |
+| `LNK1104 无法打开 ws2_32.lib`                         | 在非 VS 开发者环境里用 Ninja 构建            | 用 `./build.ps1`（VS 生成器），或在 VS 里生成                                                                             |
+| 登录后马上掉线                                           | 登录后 15 秒内没建立 WebSocket            | 检查浏览器网络与 `/ws/chat` 是否可达                                                                                      |
+| 小程序提示无法连接服务器                                      | 手机里的 `127.0.0.1` 指向手机自身，或未配置合法域名  | 在登录页「开发连接设置」填写可访问的服务器地址；正式版配置 HTTPS/WSS 合法域名                                                                  |
+| 同一昵称登录被拒                                          | 该昵称仍有活动连接                         | 关闭原页面，等断线宽限结束或先退出登录                                                                                           |
+| 编译报找不到 `boost/version.hpp`                        | 没放 Boost                          | 解压到 `third_party/boost_1_78_0`                                                                                |
+| 编译报找不到 `mysql.h`                                  | 没装 MySQL 客户端库或路径不同                | 安装 MySQL Server 8.0，或指定 `-DMYSQL_ROOT_DIR=...`                                                                |
 
 ## 已验证环境
 
-| 项目 | 版本 |
-| --- | --- |
-| 操作系统 | Windows 10.0.26300 x64 |
-| 编译器 | MSVC 19.44.35216（Visual Studio 2022 17.14） |
-| CMake | 4.3.1 |
-| MySQL | 8.0.45（服务端与客户端库） |
-| Node.js | v24.14.1 |
-| Boost | 1.78 |
+| 项目      | 版本                                         |
+| ------- | ------------------------------------------ |
+| 操作系统    | Windows 10.0.26300 x64                     |
+| 编译器     | MSVC 19.44.35216（Visual Studio 2022 17.14） |
+| CMake   | 4.3.1                                      |
+| MySQL   | 8.0.45（服务端与客户端库）                           |
+| Node.js | v24.14.1                                   |
+| Boost   | 1.78                                       |
 
 ## 开发约定
 

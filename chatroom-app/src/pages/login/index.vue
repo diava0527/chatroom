@@ -7,6 +7,8 @@
       <view class="intro">
         <AppLogo size="lg" />
         <text class="intro__brand">聊天室</text>
+        <text class="intro__slogan">相遇，从一句你好开始。</text>
+        <text class="intro__desc">一个轻松交流的小天地，公共大厅与私聊都在这里。</text>
         <view class="intro__chips">
           <view class="chip">
             <view class="chip__dot" />
@@ -70,6 +72,8 @@
         <AppButton block size="lg" :loading="busy" :disabled="checking" @click="submit">
           {{ registering ? '注册并进入聊天室' : '进入聊天室' }}
         </AppButton>
+
+        <text class="quiet-note">友善表达 · 尊重彼此 · 让交流更自在</text>
 
         <view v-if="develop" class="dev">
           <view class="dev__toggle" @click="toggleSettings">
@@ -270,6 +274,20 @@ async function submit() {
   color: $color-ink;
 }
 
+.intro__slogan {
+  margin-top: $space-xs;
+  font-size: $font-subtitle;
+  font-weight: $weight-semibold;
+  color: $color-text-strong;
+}
+
+.intro__desc {
+  margin-top: $space-xs;
+  font-size: $font-caption;
+  color: $color-muted;
+  line-height: $leading-relaxed;
+}
+
 .intro__chips {
   display: flex;
   flex-wrap: wrap;
@@ -392,6 +410,15 @@ async function submit() {
   margin-top: $space-lg;
 }
 
+.quiet-note {
+  display: block;
+  margin-top: $space-md;
+  text-align: center;
+  font-size: $font-micro;
+  color: $color-faint;
+  letter-spacing: 1px;
+}
+
 .dev {
   margin-top: $space-lg;
   border-top: 1px dashed $color-line-strong;
@@ -458,6 +485,17 @@ async function submit() {
 
   .intro__brand {
     font-size: 34px;
+  }
+
+  .intro__slogan {
+    margin-top: $space-sm;
+    font-size: 20px;
+  }
+
+  .intro__desc {
+    margin-top: $space-sm;
+    font-size: $font-body;
+    max-width: 380px;
   }
 
   .panel {
